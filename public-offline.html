@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="bg">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Офлайн — CX Notes</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: "Nunito", ui-sans-serif, system-ui, sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        background: #f0f0f8;
+        color: #1a1a2e;
+      }
+      .container {
+        text-align: center;
+        padding: 2rem;
+        max-width: 360px;
+      }
+      .icon {
+        width: 72px;
+        height: 72px;
+        background: #5046e5;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        font-size: 36px;
+      }
+      h1 { font-size: 1.6rem; font-weight: 800; margin-bottom: 0.5rem; }
+      p { color: #555; margin-bottom: 1.5rem; line-height: 1.6; }
+      button {
+        background: #5046e5;
+        color: white;
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 12px;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: opacity 0.2s;
+      }
+      button:hover { opacity: 0.85; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="icon">📝</div>
+      <h1>Офлайн режим</h1>
+      <p>Нямаш интернет връзка. Провери мрежата си и опитай отново.</p>
+      <button onclick="window.location.reload()">Опитай отново</button>
+    </div>
+  </body>
+</html>
+ 
