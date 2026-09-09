@@ -1,0 +1,16 @@
+node_modules/
+dist/
+build/
+.vite/
+.env
+.env.local
+.env.*.local
+convex/_generated/
+.vscode/
+.idea/
+*.swp
+.DS_Store
+*.log
+*.tsbuildinfo
+node_modules/.tmp/
+pnpm-lock.yaml
