@@ -279,7 +279,7 @@ export default function NotesApp() {
                 <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
                   <span className="w-4 h-0.5 bg-muted-foreground/40 rounded" />Pinned<span className="w-4 h-0.5 bg-muted-foreground/40 rounded" />
                 </h2>
-                <SortableNoteGrid notes={pinnedNotes} labels={labels} boards={boards} onEdit={(n) => setNoteModal({ mode: "edit", note: n })} onDelete={handleDeleteNote} onTogglePin={handleTogglePin} newNoteIds={newNoteIds} />
+                <SortableNoteGrid notes={pinnedNotes} labels={labels} boards={boards} onEdit={(n) => setNoteModal({ mode: "edit", note: n })} onDelete={handleDeleteNote} onTogglePin={handleTogglePin} onBoardClick={setActiveBoardId} newNoteIds={newNoteIds} />
               </section>
             )}
             {unpinnedNotes.length > 0 && (
@@ -289,7 +289,7 @@ export default function NotesApp() {
                     <span className="w-4 h-0.5 bg-muted-foreground/40 rounded" />Others<span className="w-4 h-0.5 bg-muted-foreground/40 rounded" />
                   </h2>
                 )}
-                <SortableNoteGrid notes={unpinnedNotes} labels={labels} boards={boards} onEdit={(n) => setNoteModal({ mode: "edit", note: n })} onDelete={handleDeleteNote} onTogglePin={handleTogglePin} newNoteIds={newNoteIds} />
+                <SortableNoteGrid notes={unpinnedNotes} labels={labels} boards={boards} onEdit={(n) => setNoteModal({ mode: "edit", note: n })} onDelete={handleDeleteNote} onTogglePin={handleTogglePin} onBoardClick={setActiveBoardId} newNoteIds={newNoteIds} />
               </section>
             )}
           </div>
