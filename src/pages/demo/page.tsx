@@ -246,6 +246,8 @@ export default function DemoNotesPage() {
   // ── Note card ──────────────────────────────────────────────────────────────
   const NoteCard = ({ note }: { note: DemoNote }) => {
     const noteLabels = labels.filter((l) => note.labelIds?.includes(l.id));
+    const board = note.boardId ? boards.find((b) => b.id === note.boardId) : undefined;
+    const boardColor = board ? BOARD_COLORS[board.colorIndex % BOARD_COLORS.length] : undefined;
     return (
       <div
         className="group break-inside-avoid cursor-pointer rounded-2xl p-4 shadow-sm transition-shadow hover:shadow-md"
@@ -314,6 +316,18 @@ export default function DemoNotesPage() {
                 {format(new Date(note.reminderAt), "MMM d, HH:mm")}
               </span>
             )}
+          </div>
+        )}
+        {/* Board badge — same as in the normal app */}
+        {board && boardColor && (
+          <div className="mt-2">
+            <span
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold text-white"
+              style={{ background: boardColor.bg }}
+            >
+              <LayoutGrid size={8} />
+              {board.name}
+            </span>
           </div>
         )}
       </div>
