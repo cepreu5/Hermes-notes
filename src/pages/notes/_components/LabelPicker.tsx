@@ -2,8 +2,6 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { Plus, X, Pencil, Check } from "lucide-react";
-import { Input } from "@/components/ui/input.tsx";
-import { Button } from "@/components/ui/button.tsx";
 import { cn } from "@/lib/utils.ts";
 import type { Doc, Id } from "@/convex/_generated/dataModel.d.ts";
 
@@ -66,6 +64,10 @@ export default function LabelPicker({ selectedIds, onChange }: Props) {
     await removeLabel({ labelId: id });
   };
 
+  // Shared input style — hardcoded dark color so it's always readable on the
+  // light pastel note-card background, regardless of the active CSS theme.
+  const inputStyle: React.CSSProperties = { color: "#111", caretColor: "#111" };
+
   return (
     <div className="space-y-2">
       <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Labels</p>
@@ -83,10 +85,14 @@ export default function LabelPicker({ selectedIds, onChange }: Props) {
                       style={{ background: c }} />
                   ))}
                 </div>
-                <Input value={editName} onChange={(e) => setEditName(e.target.value)}
-                  className="h-6 text-xs px-1.5 rounded-lg w-20 bg-white/80 border-0 text-gray-900 placeholder:text-gray-500"
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="h-6 text-xs px-1.5 rounded-lg w-20 bg-white/80 border-0 outline-none focus:ring-2 focus:ring-gray-400 placeholder:text-gray-400"
+                  style={inputStyle}
                   onKeyDown={(e) => { if (e.key === "Enter") handleUpdate(); if (e.key === "Escape") setEditing(null); }}
-                  autoFocus />
+                  autoFocus
+                />
                 <button type="button" onClick={handleUpdate} className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-black/10"><Check size={11} /></button>
                 <button type="button" onClick={() => setEditing(null)} className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-black/10"><X size={11} /></button>
               </div>
@@ -122,10 +128,15 @@ export default function LabelPicker({ selectedIds, onChange }: Props) {
                   style={{ background: c }} />
               ))}
             </div>
-            <Input value={newName} onChange={(e) => setNewName(e.target.value)}
-              placeholder="Label name..." className="h-6 text-xs px-1.5 rounded-lg w-24 bg-white/80 border-0 text-gray-900 placeholder:text-gray-500"
+            <input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Label name..."
+              className="h-6 text-xs px-1.5 rounded-lg w-24 bg-white/80 border-0 outline-none focus:ring-2 focus:ring-gray-400 placeholder:text-gray-400"
+              style={inputStyle}
               onKeyDown={(e) => { if (e.key === "Enter") handleCreate(); if (e.key === "Escape") setAdding(false); }}
-              autoFocus />
+              autoFocus
+            />
             <button type="button" onClick={handleCreate} className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-black/10"><Check size={11} /></button>
             <button type="button" onClick={() => setAdding(false)} className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-black/10"><X size={11} /></button>
           </div>
