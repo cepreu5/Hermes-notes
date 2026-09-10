@@ -1,18 +1,27 @@
 import { Pin, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { NOTE_COLORS } from "@/lib/note-colors.ts";
+import { LabelBadge } from "./LabelPicker.tsx";
 import type { Doc } from "@/convex/_generated/dataModel.d.ts";
 
 type Props = {
   note: Doc<"notes">;
+  labels: Doc<"labels">[];
   onEdit: (note: Doc<"notes">) => void;
   onDelete: (id: Doc<"notes">["_id"]) => void;
   onTogglePin: (id: Doc<"notes">["_id"]) => void;
   isNew?: boolean;
 };
 
-export default function NoteCard({ note, onEdit, onDelete, onTogglePin, isNew }: Props) {
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+export default function NoteCard({ note, labels, onEdit, onDelete, onTogglePin, isNew }: Props) {
   const color = NOTE_COLORS[note.colorIndex % NOTE_COLORS.length];
+  const isHtml = note.content.startsWith("<");
+  const preview = isHtml ? stripHtml(note.content) : note.content;
+  const noteLabels = labels.filter((l) => note.labelIds?.includes(l._id));
 
   return (
     <div
@@ -34,7 +43,12 @@ export default function NoteCard({ note, onEdit, onDelete, onTogglePin, isNew }:
       {note.title && (
         <p className="font-bold text-sm text-gray-800 mb-2 line-clamp-2 leading-tight">{note.title}</p>
       )}
-      <p className="text-xs text-gray-700 line-clamp-5 leading-relaxed whitespace-pre-wrap">{note.content}</p>
+      <p className="text-xs text-gray-700 line-clamp-4 leading-relaxed whitespace-pre-wrap">{preview}</p>
+      {noteLabels.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-2">
+          {noteLabels.map((l) => <LabelBadge key={l._id} label={l} />)}
+        </div>
+      )}
       <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
         <button
           className="w-7 h-7 rounded-full flex items-center justify-center bg-black/10 hover:bg-black/20 transition-colors"

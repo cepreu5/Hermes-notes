@@ -18,6 +18,12 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_userId_order", ["userId", "order"]),
 
+  labels: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    colorHex: v.string(),
+  }).index("by_userId", ["userId"]),
+
   notes: defineTable({
     userId: v.id("users"),
     boardId: v.optional(v.id("boards")),
@@ -27,6 +33,7 @@ export default defineSchema({
     isPinned: v.boolean(),
     pinnedAt: v.optional(v.string()),
     order: v.number(),
+    labelIds: v.optional(v.array(v.id("labels"))),
   })
     .index("by_userId", ["userId"])
     .index("by_boardId", ["boardId"])

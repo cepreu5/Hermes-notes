@@ -57,6 +57,7 @@ export const create = mutation({
     title: v.string(),
     content: v.string(),
     colorIndex: v.number(),
+    labelIds: v.optional(v.array(v.id("labels"))),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
@@ -77,6 +78,7 @@ export const create = mutation({
       colorIndex: args.colorIndex,
       isPinned: false,
       order: existing.length,
+      labelIds: args.labelIds,
     });
   },
 });
@@ -87,6 +89,7 @@ export const update = mutation({
     title: v.string(),
     content: v.string(),
     colorIndex: v.number(),
+    labelIds: v.optional(v.array(v.id("labels"))),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
@@ -97,6 +100,7 @@ export const update = mutation({
       title: args.title,
       content: args.content,
       colorIndex: args.colorIndex,
+      labelIds: args.labelIds,
     });
   },
 });

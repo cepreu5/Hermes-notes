@@ -1,13 +1,15 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { X, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { cn } from "@/lib/utils.ts";
 import { NOTE_COLORS } from "@/lib/note-colors.ts";
-import type { Doc } from "@/convex/_generated/dataModel.d.ts";
+import RichTextEditor from "./RichTextEditor.tsx";
+import LabelPicker from "./LabelPicker.tsx";
+import type { Doc, Id } from "@/convex/_generated/dataModel.d.ts";
 
 type Props = {
   note?: Doc<"notes"> | null;
-  onSave: (data: { title: string; content: string; colorIndex: number }) => void;
+  onSave: (data: { title: string; content: string; colorIndex: number; labelIds: Id<"labels">[] }) => void;
   onClose: () => void;
 };
 
@@ -15,14 +17,13 @@ export default function NoteModal({ note, onSave, onClose }: Props) {
   const [title, setTitle] = useState(note?.title ?? "");
   const [content, setContent] = useState(note?.content ?? "");
   const [colorIndex, setColorIndex] = useState(note?.colorIndex ?? 0);
+  const [labelIds, setLabelIds] = useState<Id<"labels">[]>((note?.labelIds ?? []) as Id<"labels">[]);
   const [showPalette, setShowPalette] = useState(false);
   const [visible, setVisible] = useState(false);
-  const contentRef = useRef<HTMLTextAreaElement>(null);
   const color = NOTE_COLORS[colorIndex % NOTE_COLORS.length];
 
   useEffect(() => {
     requestAnimationFrame(() => setVisible(true));
-    contentRef.current?.focus();
   }, []);
 
   const handleClose = () => {
@@ -31,8 +32,9 @@ export default function NoteModal({ note, onSave, onClose }: Props) {
   };
 
   const handleSave = () => {
-    if (!content.trim() && !title.trim()) { handleClose(); return; }
-    onSave({ title: title.trim(), content: content.trim(), colorIndex });
+    const isEmptyHtml = !content || content === "<p></p>" || content.trim() === "";
+    if (isEmptyHtml && !title.trim()) { handleClose(); return; }
+    onSave({ title: title.trim(), content, colorIndex, labelIds });
     handleClose();
   };
 
@@ -53,11 +55,12 @@ export default function NoteModal({ note, onSave, onClose }: Props) {
     >
       <div
         className={cn(
-          "relative w-full max-w-md rounded-3xl shadow-2xl flex flex-col overflow-hidden",
+          "relative w-full max-w-lg rounded-3xl shadow-2xl flex flex-col overflow-hidden",
           visible ? "modal-enter" : "modal-exit"
         )}
-        style={{ background: color.bg, minHeight: 320 }}
+        style={{ background: color.bg, minHeight: 420, maxHeight: "88vh" }}
       >
+        {/* Title */}
         <div className="flex items-center justify-between px-5 pt-5 pb-2">
           <input
             value={title}
@@ -73,15 +76,22 @@ export default function NoteModal({ note, onSave, onClose }: Props) {
             <X size={16} className="text-gray-700" />
           </button>
         </div>
-        <textarea
-          ref={contentRef}
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
+
+        {/* Rich Text Editor */}
+        <RichTextEditor
+          content={content}
+          onChange={setContent}
           placeholder="Write something..."
-          rows={7}
-          className="flex-1 bg-transparent px-5 py-2 text-sm text-gray-800 placeholder:text-gray-500 outline-none resize-none leading-relaxed"
+          className="flex-1 overflow-hidden"
         />
-        <div className="flex items-center justify-between px-4 pb-4 pt-2">
+
+        {/* Labels */}
+        <div className="px-5 py-3 border-t border-black/10">
+          <LabelPicker selectedIds={labelIds} onChange={setLabelIds} />
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between px-4 pb-4 pt-2 border-t border-black/10">
           <div className="relative">
             <button
               onClick={() => setShowPalette((p) => !p)}
