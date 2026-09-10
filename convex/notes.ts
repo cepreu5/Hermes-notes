@@ -58,6 +58,8 @@ export const create = mutation({
     content: v.string(),
     colorIndex: v.number(),
     labelIds: v.optional(v.array(v.id("labels"))),
+    dueDate: v.optional(v.string()),
+    reminderAt: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
@@ -79,6 +81,9 @@ export const create = mutation({
       isPinned: false,
       order: existing.length,
       labelIds: args.labelIds,
+      dueDate: args.dueDate,
+      reminderAt: args.reminderAt,
+      reminderSent: false,
     });
   },
 });
@@ -90,6 +95,8 @@ export const update = mutation({
     content: v.string(),
     colorIndex: v.number(),
     labelIds: v.optional(v.array(v.id("labels"))),
+    dueDate: v.optional(v.string()),
+    reminderAt: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
@@ -101,6 +108,11 @@ export const update = mutation({
       content: args.content,
       colorIndex: args.colorIndex,
       labelIds: args.labelIds,
+      dueDate: args.dueDate,
+      reminderAt: args.reminderAt,
+      // Reset reminderSent if the reminder time changed
+      reminderSent:
+        args.reminderAt !== note.reminderAt ? false : note.reminderSent,
     });
   },
 });
