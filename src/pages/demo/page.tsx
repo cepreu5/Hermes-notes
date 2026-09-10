@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowLeft, Pin, PinOff, Plus, StickyNote, Trash2 } from "lucide-react";
+import { format } from "date-fns";
+import { ArrowLeft, Bell, Calendar, Pin, PinOff, Plus, StickyNote, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
-import { Input } from "@/components/ui/input.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { NOTE_COLORS } from "@/lib/note-colors.ts";
-import { cn } from "@/lib/utils.ts";
+import NoteModal, { type NoteDraft } from "../notes/_components/NoteModal.tsx";
 import {
   deleteDemoNote,
   listDemoNotes,
@@ -14,11 +14,21 @@ import {
   type DemoNote,
 } from "@/lib/demo-notes-db.ts";
 
+type ModalState = { mode: "create" } | { mode: "edit"; note: DemoNote } | null;
+
+function toDraft(note: DemoNote): NoteDraft {
+  return {
+    title: note.title,
+    content: note.content,
+    colorIndex: note.colorIndex,
+    dueDate: note.dueDate,
+    reminderAt: note.reminderAt,
+  };
+}
+
 export default function DemoNotesPage() {
   const [notes, setNotes] = useState<DemoNote[] | undefined>(undefined);
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [colorIndex, setColorIndex] = useState(0);
+  const [modal, setModal] = useState<ModalState>(null);
 
   // Load demo notes from IndexedDB (browser-only storage, never the database).
   useEffect(() => {
@@ -40,29 +50,40 @@ export default function DemoNotesPage() {
     };
   }, []);
 
-  const addNote = useCallback(async () => {
-    if (!title.trim() && !content.trim()) {
-      toast.error("Add a title or some text first");
-      return;
-    }
-    const note: DemoNote = {
-      id: crypto.randomUUID(),
-      title: title.trim(),
-      content: content.trim(),
-      colorIndex,
-      isPinned: false,
-      createdAt: new Date().toISOString(),
-    };
-    try {
-      await putDemoNote(note);
-      setNotes((prev) => [note, ...(prev ?? [])]);
-      setTitle("");
-      setContent("");
-      toast.success("Demo note saved in this browser");
-    } catch {
-      toast.error("Could not save the note");
-    }
-  }, [title, content, colorIndex]);
+  const handleSave = useCallback(
+    async (data: {
+      title: string;
+      content: string;
+      colorIndex: number;
+      dueDate?: string;
+      reminderAt?: string;
+    }) => {
+      const editing = modal?.mode === "edit" ? modal.note : null;
+      const note: DemoNote = {
+        id: editing?.id ?? crypto.randomUUID(),
+        title: data.title,
+        content: data.content,
+        colorIndex: data.colorIndex,
+        isPinned: editing?.isPinned ?? false,
+        createdAt: editing?.createdAt ?? new Date().toISOString(),
+        dueDate: data.dueDate,
+        reminderAt: data.reminderAt,
+      };
+      try {
+        await putDemoNote(note);
+        setNotes((prev) => {
+          const rest = (prev ?? []).filter((n) => n.id !== note.id);
+          return editing
+            ? (prev ?? []).map((n) => (n.id === note.id ? note : n))
+            : [note, ...rest];
+        });
+        toast.success(editing ? "Demo note saved" : "Demo note created");
+      } catch {
+        toast.error("Could not save the note");
+      }
+    },
+    [modal],
+  );
 
   const removeNote = async (id: string) => {
     try {
@@ -105,39 +126,6 @@ export default function DemoNotesPage() {
       </header>
 
       <main className="mx-auto w-full max-w-4xl px-4 py-6">
-        <div className="mb-8 space-y-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Note title"
-            className="rounded-xl border-0 bg-muted text-base font-semibold"
-          />
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Write something..."
-            rows={4}
-            className="w-full resize-y rounded-xl bg-muted px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-          <div className="flex flex-wrap items-center gap-2">
-            {NOTE_COLORS.map((color, i) => (
-              <button
-                key={color.label}
-                onClick={() => setColorIndex(i)}
-                aria-label={color.label}
-                className={cn(
-                  "h-7 w-7 cursor-pointer rounded-full border-2 transition-transform hover:scale-110",
-                  colorIndex === i ? "border-foreground" : "border-transparent",
-                )}
-                style={{ background: color.bg }}
-              />
-            ))}
-            <Button onClick={() => void addNote()} className="ml-auto rounded-xl">
-              <Plus size={16} className="mr-1" /> Add note
-            </Button>
-          </div>
-        </div>
-
         {notes === undefined ? (
           <div className="columns-1 gap-4 space-y-4 sm:columns-2 lg:columns-3">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -154,16 +142,20 @@ export default function DemoNotesPage() {
               <StickyNote size={28} className="text-muted-foreground" />
             </div>
             <h3 className="mb-1 text-lg font-bold">No demo notes yet</h3>
-            <p className="text-sm text-muted-foreground">
-              Add one above to try the app without signing in
+            <p className="mb-6 text-sm text-muted-foreground">
+              Press + to try the full note editor without signing in
             </p>
+            <Button onClick={() => setModal({ mode: "create" })} className="rounded-xl">
+              <Plus size={16} className="mr-1" /> New Note
+            </Button>
           </div>
         ) : (
           <div className="columns-1 gap-4 space-y-4 sm:columns-2 lg:columns-3">
             {sorted.map((note) => (
               <div
                 key={note.id}
-                className="group break-inside-avoid rounded-2xl p-4 shadow-sm"
+                className="group break-inside-avoid cursor-pointer rounded-2xl p-4 shadow-sm transition-shadow hover:shadow-md"
+                onClick={() => setModal({ mode: "edit", note })}
                 style={{ background: NOTE_COLORS[note.colorIndex % NOTE_COLORS.length].bg }}
               >
                 <div className="flex items-start gap-2">
@@ -171,14 +163,14 @@ export default function DemoNotesPage() {
                     {note.title || "Untitled"}
                   </h3>
                   <button
-                    onClick={() => void togglePin(note)}
+                    onClick={(e) => { e.stopPropagation(); void togglePin(note); }}
                     className="cursor-pointer text-neutral-700 hover:text-neutral-900"
                     aria-label={note.isPinned ? "Unpin note" : "Pin note"}
                   >
                     {note.isPinned ? <PinOff size={14} /> : <Pin size={14} />}
                   </button>
                   <button
-                    onClick={() => void removeNote(note.id)}
+                    onClick={(e) => { e.stopPropagation(); void removeNote(note.id); }}
                     className="cursor-pointer text-neutral-700 hover:text-red-600"
                     aria-label="Delete note"
                   >
@@ -186,15 +178,49 @@ export default function DemoNotesPage() {
                   </button>
                 </div>
                 {note.content && (
-                  <p className="mt-2 text-sm whitespace-pre-wrap break-words text-neutral-800">
-                    {note.content}
-                  </p>
+                  <div
+                    className="mt-2 text-sm break-words text-neutral-800 [&_a]:underline [&_li]:ml-4 [&_li]:list-disc"
+                    dangerouslySetInnerHTML={{ __html: note.content }}
+                  />
+                )}
+                {(note.dueDate || note.reminderAt) && (
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                    {note.dueDate && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-black/10 px-2 py-0.5 text-[10px] font-bold text-neutral-800">
+                        <Calendar size={10} />
+                        {format(new Date(note.dueDate), "MMM d, HH:mm")}
+                      </span>
+                    )}
+                    {note.reminderAt && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/40 px-2 py-0.5 text-[10px] font-bold text-amber-900">
+                        <Bell size={10} />
+                        {format(new Date(note.reminderAt), "MMM d, HH:mm")}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
             ))}
           </div>
         )}
       </main>
+
+      <button
+        onClick={() => setModal({ mode: "create" })}
+        className="fixed right-6 bottom-6 z-30 flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xl transition-all duration-250 hover:scale-110 hover:rotate-90 active:scale-95"
+        aria-label="New note"
+      >
+        <Plus size={26} />
+      </button>
+
+      {modal && (
+        <NoteModal
+          demo
+          note={modal.mode === "edit" ? toDraft(modal.note) : null}
+          onSave={handleSave}
+          onClose={() => setModal(null)}
+        />
+      )}
     </div>
   );
 }
