@@ -141,6 +141,18 @@ export default function NotesApp() {
     catch { toast.error("Error deleting board"); }
   }, [deleteBoard, activeBoardId]);
 
+  // Resolve board info for the currently open modal
+  const noteModalBoardInfo = (() => {
+    if (!noteModal) return undefined;
+    const boardId =
+      noteModal.mode === "edit"
+        ? noteModal.note.boardId
+        : noteModal.boardId ?? activeBoardId;
+    if (!boardId) return undefined;
+    const b = boards.find((bd) => bd._id === boardId);
+    return b ? { name: b.name, colorIndex: b.colorIndex } : undefined;
+  })();
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <header className="sticky top-0 z-40 bg-card/80 backdrop-blur-md border-b border-border shadow-sm">
@@ -301,7 +313,7 @@ export default function NotesApp() {
       </button>
 
       {showBoardMenu && <div className="fixed inset-0 z-30" onClick={() => setShowBoardMenu(false)} aria-hidden="true" />}
-      {noteModal && (<NoteModal note={noteModal.mode === "edit" ? noteModal.note : null} onSave={handleSaveNote} onClose={() => setNoteModal(null)} />)}
+      {noteModal && (<NoteModal note={noteModal.mode === "edit" ? noteModal.note : null} boardInfo={noteModalBoardInfo} onSave={handleSaveNote} onClose={() => setNoteModal(null)} />)}
       {boardModal && (<BoardModal board={boardModal.mode === "edit" ? boardModal.board : null} onSave={handleSaveBoard} onClose={() => setBoardModal(null)} />)}
     </div>
   );
