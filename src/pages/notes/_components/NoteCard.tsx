@@ -61,7 +61,7 @@ export default function NoteCard({ note, labels, onEdit, onDelete, onTogglePin, 
               isOverdue ? "bg-red-500/20 text-red-700" : isDueToday ? "bg-amber-400/30 text-amber-800" : "bg-black/10 text-gray-700"
             )}>
               <Calendar size={9} />
-              {format(due, "MMM d")}
+              {format(due, "MMM d, HH:mm")}
             </span>
           )}
           {hasReminder && (
