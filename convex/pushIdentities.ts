@@ -30,3 +30,16 @@ export const updateIdentityVisitorId = internalMutation({
     }
   },
 });
+
+export const deleteIdentity = internalMutation({
+  args: { secret: v.string() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.db
+      .query("pushIdentities")
+      .withIndex("by_secret", (q) => q.eq("secret", args.secret))
+      .first();
+    if (identity) {
+      await ctx.db.delete(identity._id);
+    }
+  },
+});
