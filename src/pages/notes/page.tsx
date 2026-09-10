@@ -1,10 +1,11 @@
 import { useState, useCallback, useId } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
-import { Plus, Search, X, StickyNote, LayoutGrid, ChevronDown, Pencil, Trash2, LogOut, WifiOff, Moon, Sun, Download, Tag } from "lucide-react";
+import { Plus, Search, X, StickyNote, LayoutGrid, ChevronDown, Pencil, Trash2, LogOut, WifiOff, Moon, Sun, Download, Tag, Bell, BellOff } from "lucide-react";
+import { usePushNotifications } from "@/hooks/use-push-notifications.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";

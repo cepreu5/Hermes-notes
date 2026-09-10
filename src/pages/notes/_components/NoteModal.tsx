@@ -1,24 +1,50 @@
 import { useState, useEffect } from "react";
-import { X, Palette } from "lucide-react";
+import { X, Palette, Calendar, Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { cn } from "@/lib/utils.ts";
 import { NOTE_COLORS } from "@/lib/note-colors.ts";
 import RichTextEditor from "./RichTextEditor.tsx";
 import LabelPicker from "./LabelPicker.tsx";
+import { format } from "date-fns";
 import type { Doc, Id } from "@/convex/_generated/dataModel.d.ts";
 
 type Props = {
   note?: Doc<"notes"> | null;
-  onSave: (data: { title: string; content: string; colorIndex: number; labelIds: Id<"labels">[] }) => void;
+  onSave: (data: {
+    title: string;
+    content: string;
+    colorIndex: number;
+    labelIds: Id<"labels">[];
+    dueDate?: string;
+    reminderAt?: string;
+  }) => void;
   onClose: () => void;
 };
+
+/** Convert a local datetime-local string ("2026-09-10T15:30") to UTC ISO string */
+function localInputToUtc(value: string): string | undefined {
+  if (!value) return undefined;
+  return new Date(value).toISOString();
+}
+
+/** Convert a UTC ISO string to local datetime-local input value */
+function utcToLocalInput(iso: string | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  // Format as "YYYY-MM-DDTHH:mm"
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 export default function NoteModal({ note, onSave, onClose }: Props) {
   const [title, setTitle] = useState(note?.title ?? "");
   const [content, setContent] = useState(note?.content ?? "");
   const [colorIndex, setColorIndex] = useState(note?.colorIndex ?? 0);
   const [labelIds, setLabelIds] = useState<Id<"labels">[]>((note?.labelIds ?? []) as Id<"labels">[]);
+  const [dueDate, setDueDate] = useState(utcToLocalInput(note?.dueDate));
+  const [reminderAt, setReminderAt] = useState(utcToLocalInput(note?.reminderAt));
   const [showPalette, setShowPalette] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [visible, setVisible] = useState(false);
   const color = NOTE_COLORS[colorIndex % NOTE_COLORS.length];
 
@@ -34,7 +60,14 @@ export default function NoteModal({ note, onSave, onClose }: Props) {
   const handleSave = () => {
     const isEmptyHtml = !content || content === "<p></p>" || content.trim() === "";
     if (isEmptyHtml && !title.trim()) { handleClose(); return; }
-    onSave({ title: title.trim(), content, colorIndex, labelIds });
+    onSave({
+      title: title.trim(),
+      content,
+      colorIndex,
+      labelIds,
+      dueDate: localInputToUtc(dueDate),
+      reminderAt: localInputToUtc(reminderAt),
+    });
     handleClose();
   };
 
@@ -47,6 +80,9 @@ export default function NoteModal({ note, onSave, onClose }: Props) {
     return () => window.removeEventListener("keydown", handler);
   });
 
+  const hasDue = !!dueDate;
+  const hasReminder = !!reminderAt;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -58,7 +94,7 @@ export default function NoteModal({ note, onSave, onClose }: Props) {
           "relative w-full max-w-lg rounded-3xl shadow-2xl flex flex-col overflow-hidden",
           visible ? "modal-enter" : "modal-exit"
         )}
-        style={{ background: color.bg, minHeight: 420, maxHeight: "88vh" }}
+        style={{ background: color.bg, minHeight: 420, maxHeight: "92vh" }}
       >
         {/* Title */}
         <div className="flex items-center justify-between px-5 pt-5 pb-2">
@@ -85,8 +121,95 @@ export default function NoteModal({ note, onSave, onClose }: Props) {
           className="flex-1 overflow-hidden"
         />
 
+        {/* Due date / reminder section */}
+        <div className="px-5 py-2 border-t border-black/10 space-y-2">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowDatePicker((v) => !v)}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold transition-all border",
+                hasDue || hasReminder
+                  ? "bg-gray-800/20 border-gray-700/30 text-gray-700"
+                  : "bg-black/10 border-transparent text-gray-600 hover:bg-black/15"
+              )}
+            >
+              <Calendar size={13} />
+              {hasDue ? format(new Date(dueDate), "MMM d, HH:mm") : "Add due date"}
+            </button>
+
+            {hasDue && (
+              <button
+                type="button"
+                onClick={() => setDueDate("")}
+                className="w-5 h-5 rounded-full flex items-center justify-center bg-black/10 hover:bg-black/20 transition-colors"
+                aria-label="Remove due date"
+              >
+                <X size={9} className="text-gray-700" />
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                if (hasReminder) { setReminderAt(""); }
+                else {
+                  // Default reminder: same as due date, or 1 hour from now
+                  const base = dueDate ? new Date(dueDate) : new Date(Date.now() + 60 * 60 * 1000);
+                  setReminderAt(utcToLocalInput(base.toISOString()));
+                  setShowDatePicker(true);
+                }
+              }}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold transition-all border",
+                hasReminder
+                  ? "bg-amber-400/30 border-amber-500/30 text-amber-800"
+                  : "bg-black/10 border-transparent text-gray-600 hover:bg-black/15"
+              )}
+              aria-label={hasReminder ? "Remove reminder" : "Add reminder"}
+            >
+              {hasReminder ? <Bell size={13} /> : <BellOff size={13} />}
+              {hasReminder ? format(new Date(reminderAt), "MMM d, HH:mm") : "Remind me"}
+            </button>
+
+            {hasReminder && (
+              <button
+                type="button"
+                onClick={() => setReminderAt("")}
+                className="w-5 h-5 rounded-full flex items-center justify-center bg-black/10 hover:bg-black/20 transition-colors"
+                aria-label="Remove reminder"
+              >
+                <X size={9} className="text-gray-700" />
+              </button>
+            )}
+          </div>
+
+          {showDatePicker && (
+            <div className="grid grid-cols-2 gap-2 fade-in-up" onClick={(e) => e.stopPropagation()}>
+              <div>
+                <label className="text-[10px] font-bold uppercase text-gray-600 tracking-wide block mb-0.5">Due date</label>
+                <input
+                  type="datetime-local"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="w-full rounded-xl bg-white/70 px-2 py-1 text-xs text-gray-800 border-0 outline-none focus:ring-2 focus:ring-gray-400"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase text-gray-600 tracking-wide block mb-0.5">Reminder</label>
+                <input
+                  type="datetime-local"
+                  value={reminderAt}
+                  onChange={(e) => setReminderAt(e.target.value)}
+                  className="w-full rounded-xl bg-white/70 px-2 py-1 text-xs text-gray-800 border-0 outline-none focus:ring-2 focus:ring-gray-400"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Labels */}
-        <div className="px-5 py-3 border-t border-black/10">
+        <div className="px-5 py-2 border-t border-black/10">
           <LabelPicker selectedIds={labelIds} onChange={setLabelIds} />
         </div>
 

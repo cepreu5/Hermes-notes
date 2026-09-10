@@ -1,7 +1,8 @@
-import { Pin, Pencil, Trash2 } from "lucide-react";
+import { Pin, Pencil, Trash2, Calendar, Bell } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { NOTE_COLORS } from "@/lib/note-colors.ts";
 import { LabelBadge } from "./LabelPicker.tsx";
+import { format, isPast, isToday } from "date-fns";
 import type { Doc } from "@/convex/_generated/dataModel.d.ts";
 
 type Props = {
@@ -22,6 +23,11 @@ export default function NoteCard({ note, labels, onEdit, onDelete, onTogglePin, 
   const isHtml = note.content.startsWith("<");
   const preview = isHtml ? stripHtml(note.content) : note.content;
   const noteLabels = labels.filter((l) => note.labelIds?.includes(l._id));
+
+  const due = note.dueDate ? new Date(note.dueDate) : null;
+  const isOverdue = due && isPast(due) && !isToday(due);
+  const isDueToday = due && isToday(due);
+  const hasReminder = !!note.reminderAt;
 
   return (
     <div
@@ -44,11 +50,38 @@ export default function NoteCard({ note, labels, onEdit, onDelete, onTogglePin, 
         <p className="font-bold text-sm text-gray-800 mb-2 line-clamp-2 leading-tight">{note.title}</p>
       )}
       <p className="text-xs text-gray-700 line-clamp-4 leading-relaxed whitespace-pre-wrap">{preview}</p>
+
+      {/* Due date + reminder badges */}
+      {(due || hasReminder) && (
+        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+          {due && (
+            <span className={cn(
+              "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold",
+              isOverdue
+                ? "bg-red-500/20 text-red-700"
+                : isDueToday
+                ? "bg-amber-400/30 text-amber-800"
+                : "bg-black/10 text-gray-700"
+            )}>
+              <Calendar size={9} />
+              {format(due, "MMM d")}
+            </span>
+          )}
+          {hasReminder && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-violet-400/20 text-violet-700">
+              <Bell size={9} />
+              {format(new Date(note.reminderAt!), "MMM d, HH:mm")}
+            </span>
+          )}
+        </div>
+      )}
+
       {noteLabels.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-2">
           {noteLabels.map((l) => <LabelBadge key={l._id} label={l} />)}
         </div>
       )}
+
       <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
         <button
           className="w-7 h-7 rounded-full flex items-center justify-center bg-black/10 hover:bg-black/20 transition-colors"
