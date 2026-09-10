@@ -243,6 +243,18 @@ export default function DemoNotesPage() {
     void refreshAll();
   };
 
+  // Resolve board info for the currently open note modal
+  const noteModalBoardInfo = (() => {
+    if (!noteModal) return undefined;
+    const boardId =
+      noteModal.mode === "edit"
+        ? noteModal.note.boardId
+        : noteModal.boardId ?? activeBoardId;
+    if (!boardId) return undefined;
+    const b = boards.find((bd) => bd.id === boardId);
+    return b ? { name: b.name, colorIndex: b.colorIndex } : undefined;
+  })();
+
   // ── Note card ──────────────────────────────────────────────────────────────
   const NoteCard = ({ note }: { note: DemoNote }) => {
     const noteLabels = labels.filter((l) => note.labelIds?.includes(l.id));
@@ -654,6 +666,7 @@ export default function DemoNotesPage() {
         <NoteModal
           demo
           note={noteModal.mode === "edit" ? toDraft(noteModal.note) : null}
+          boardInfo={noteModalBoardInfo}
           onSave={handleSaveNote}
           onClose={closeNoteModal}
         />
