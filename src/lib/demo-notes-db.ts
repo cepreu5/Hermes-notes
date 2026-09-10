@@ -8,6 +8,7 @@ export type DemoNote = {
   dueDate?: string;
   reminderAt?: string;
   labelIds?: string[];
+  boardId?: string;
 };
 
 export type DemoLabel = {
@@ -17,21 +18,28 @@ export type DemoLabel = {
   createdAt: string;
 };
 
+export type DemoBoard = {
+  id: string;
+  name: string;
+  colorIndex: number;
+  createdAt: string;
+};
+
 const DB_NAME = "cx-notes-demo";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE = "notes";
 const LABELS_STORE = "labels";
+const BOARDS_STORE = "boards";
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
     request.onupgradeneeded = () => {
       const db = request.result;
-      if (!db.objectStoreNames.contains(STORE)) {
-        db.createObjectStore(STORE, { keyPath: "id" });
-      }
-      if (!db.objectStoreNames.contains(LABELS_STORE)) {
-        db.createObjectStore(LABELS_STORE, { keyPath: "id" });
+      for (const store of [STORE, LABELS_STORE, BOARDS_STORE]) {
+        if (!db.objectStoreNames.contains(store)) {
+          db.createObjectStore(store, { keyPath: "id" });
+        }
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -63,6 +71,17 @@ function isDemoLabel(value: unknown): value is DemoLabel {
   );
 }
 
+function isDemoBoard(value: unknown): value is DemoBoard {
+  if (typeof value !== "object" || value === null) return false;
+  const c = value as Partial<DemoBoard>;
+  return (
+    typeof c.id === "string" &&
+    typeof c.name === "string" &&
+    typeof c.colorIndex === "number" &&
+    typeof c.createdAt === "string"
+  );
+}
+
 async function getAll(store: string): Promise<unknown[]> {
   const db = await openDb();
   try {
@@ -76,7 +95,7 @@ async function getAll(store: string): Promise<unknown[]> {
   }
 }
 
-async function put(store: string, value: DemoNote | DemoLabel): Promise<void> {
+async function put(store: string, value: DemoNote | DemoLabel | DemoBoard): Promise<void> {
   const db = await openDb();
   try {
     await new Promise<void>((resolve, reject) => {
@@ -134,5 +153,23 @@ export async function deleteDemoLabel(id: string): Promise<void> {
     if (note.labelIds?.includes(id)) {
       await putDemoNote({ ...note, labelIds: note.labelIds.filter((x) => x !== id) });
     }
+  }
+}
+
+export async function listDemoBoards(): Promise<DemoBoard[]> {
+  const rows = await getAll(BOARDS_STORE);
+  return rows.filter(isDemoBoard).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+export async function putDemoBoard(board: DemoBoard): Promise<void> {
+  await put(BOARDS_STORE, board);
+}
+
+// Deleting a board also deletes the notes that belong to it
+export async function deleteDemoBoard(id: string): Promise<void> {
+  await remove(BOARDS_STORE, id);
+  const notes = await listDemoNotes();
+  for (const note of notes) {
+    if (note.boardId === id) await deleteDemoNote(note.id);
   }
 }
