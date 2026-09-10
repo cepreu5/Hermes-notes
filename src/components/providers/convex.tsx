@@ -1,34 +1,30 @@
-import { ConvexReactClient } from "convex/react";
-import { ConvexProviderWithAuth } from "convex/react";
-import { useAuth } from "@/hooks/use-auth.ts";
+import { ConvexReactClient, ConvexProviderWithAuth } from "convex/react";
+import { useAuth as useOidcAuth } from "react-oidc-context";
 import { useCallback } from "react";
 
 const convexUrl = import.meta.env.VITE_CONVEX_URL as string;
 const convex = new ConvexReactClient(convexUrl);
 
-function useAuthFromHercules() {
-  const { user, isLoading } = useAuth();
+function useAuthFromOidc() {
+  const auth = useOidcAuth();
 
   const fetchAccessToken = useCallback(
-    async ({ forceRefreshToken }: { forceRefreshToken: boolean }) => {
-      // @ts-expect-error - access id_token from oidc user object
-      const token = user?.id_token as string | undefined;
-      if (forceRefreshToken) return token ?? null;
-      return token ?? null;
+    async (_opts: { forceRefreshToken: boolean }) => {
+      return auth.user?.id_token ?? null;
     },
-    [user]
+    [auth.user]
   );
 
   return {
-    isLoading,
-    isAuthenticated: !!user,
+    isLoading: auth.isLoading,
+    isAuthenticated: auth.isAuthenticated,
     fetchAccessToken,
   };
 }
 
 export function ConvexProvider({ children }: { children: React.ReactNode }) {
   return (
-    <ConvexProviderWithAuth client={convex} useAuth={useAuthFromHercules}>
+    <ConvexProviderWithAuth client={convex} useAuth={useAuthFromOidc}>
       {children}
     </ConvexProviderWithAuth>
   );
