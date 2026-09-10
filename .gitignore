@@ -5,7 +5,6 @@ build/
 .env
 .env.local
 .env.*.local
-convex/_generated/
 .vscode/
 .idea/
 *.swp
