@@ -27,11 +27,12 @@ type Props = {
   onDelete: (id: Id<"notes">) => void;
   onTogglePin: (id: Id<"notes">) => void;
   onReorder?: (ids: Id<"notes">[]) => void;
+  onBoardClick?: (boardId: Id<"boards">) => void;
   newNoteIds: Set<string>;
 };
 
 function SortableNote({
-  note, labels, boards, onEdit, onDelete, onTogglePin, isNew,
+  note, labels, boards, onEdit, onDelete, onTogglePin, onBoardClick, isNew,
 }: {
   note: Doc<"notes">;
   labels: Doc<"labels">[];
@@ -39,6 +40,7 @@ function SortableNote({
   onEdit: (note: Doc<"notes">) => void;
   onDelete: (id: Id<"notes">) => void;
   onTogglePin: (id: Id<"notes">) => void;
+  onBoardClick?: (boardId: Id<"boards">) => void;
   isNew: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -54,13 +56,13 @@ function SortableNote({
   return (
     <div ref={setNodeRef} style={style} className="break-inside-avoid mb-4" {...attributes}>
       <div {...listeners} style={{ touchAction: "none" }}>
-        <NoteCard note={note} labels={labels} boards={boards} onEdit={onEdit} onDelete={onDelete} onTogglePin={onTogglePin} isNew={isNew} />
+        <NoteCard note={note} labels={labels} boards={boards} onEdit={onEdit} onDelete={onDelete} onTogglePin={onTogglePin} onBoardClick={onBoardClick} isNew={isNew} />
       </div>
     </div>
   );
 }
 
-export default function SortableNoteGrid({ notes, labels, boards, onEdit, onDelete, onTogglePin, onReorder, newNoteIds }: Props) {
+export default function SortableNoteGrid({ notes, labels, boards, onEdit, onDelete, onTogglePin, onReorder, onBoardClick, newNoteIds }: Props) {
   const [items, setItems] = useState(() => notes.map((n) => n._id));
 
   const noteMap = new Map(notes.map((n) => [n._id, n]));
@@ -98,6 +100,7 @@ export default function SortableNoteGrid({ notes, labels, boards, onEdit, onDele
               onEdit={onEdit}
               onDelete={onDelete}
               onTogglePin={onTogglePin}
+              onBoardClick={onBoardClick}
               isNew={newNoteIds.has(note._id)}
             />
           ))}
