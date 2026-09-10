@@ -1,4 +1,5 @@
 import { useState, useCallback, useId } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { toast } from "sonner";
@@ -261,9 +262,14 @@ export default function NotesApp() {
               {search ? "Try different keywords" : activeLabelId ? "No notes with this label" : "Press + to add a note"}
             </p>
             {!search && !activeLabelId && (
-              <Button onClick={() => setNoteModal({ mode: "create", boardId: activeBoardId })} className="rounded-xl">
-                <Plus size={16} className="mr-1" /> New Note
-              </Button>
+              <div className="flex flex-col items-center gap-3">
+                <Button onClick={() => setNoteModal({ mode: "create", boardId: activeBoardId })} className="rounded-xl">
+                  <Plus size={16} className="mr-1" /> New Note
+                </Button>
+                <Link to="/demo" className="text-xs font-semibold text-muted-foreground underline hover:text-foreground">
+                  Try demo mode without signing in
+                </Link>
+              </div>
             )}
           </div>
         ) : (
