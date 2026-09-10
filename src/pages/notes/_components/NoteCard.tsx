@@ -4,7 +4,7 @@ import { NOTE_COLORS, BOARD_COLORS } from "@/lib/note-colors.ts";
 import { LabelBadge } from "./LabelPicker.tsx";
 import { format, isPast, isToday } from "date-fns";
 import { downloadMarkdown } from "@/lib/note-to-markdown.ts";
-import type { Doc } from "@/convex/_generated/dataModel.d.ts";
+import type { Doc, Id } from "@/convex/_generated/dataModel.d.ts";
 
 type Props = {
   note: Doc<"notes">;
@@ -14,6 +14,7 @@ type Props = {
   onDelete: (id: Doc<"notes">["_id"]) => void;
   onTogglePin: (id: Doc<"notes">["_id"]) => void;
   onShare?: (note: Doc<"notes">) => void;
+  onBoardClick?: (boardId: Id<"boards">) => void;
   isNew?: boolean;
 };
 
@@ -21,7 +22,7 @@ function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 
-export default function NoteCard({ note, labels, boards, onEdit, onDelete, onTogglePin, onShare, isNew }: Props) {
+export default function NoteCard({ note, labels, boards, onEdit, onDelete, onTogglePin, onShare, onBoardClick, isNew }: Props) {
   const color = NOTE_COLORS[note.colorIndex % NOTE_COLORS.length];
   const isHtml = note.content.startsWith("<");
   const preview = isHtml ? stripHtml(note.content) : note.content;
@@ -83,12 +84,17 @@ export default function NoteCard({ note, labels, boards, onEdit, onDelete, onTog
         </div>
       )}
 
-      {/* Board name footer */}
+      {/* Board name badge — click selects this board */}
       {board && boardColor && (
         <div className="flex items-center gap-1 mt-2">
           <span
-            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold text-white"
+            className={cn(
+              "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold text-white",
+              onBoardClick && "cursor-pointer hover:brightness-110 active:scale-95 transition-all"
+            )}
             style={{ background: boardColor.bg }}
+            onClick={onBoardClick ? (e) => { e.stopPropagation(); onBoardClick(board._id); } : undefined}
+            title={onBoardClick ? `Filter by board: ${board.name}` : undefined}
           >
             <LayoutGrid size={8} />
             {board.name}
