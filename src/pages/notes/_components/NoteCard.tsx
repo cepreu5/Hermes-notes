@@ -1,6 +1,6 @@
-import { Pin, Pencil, Trash2, Calendar, Bell, Download, Share2 } from "lucide-react";
+import { Pin, Pencil, Trash2, Calendar, Bell, Download, Share2, LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
-import { NOTE_COLORS } from "@/lib/note-colors.ts";
+import { NOTE_COLORS, BOARD_COLORS } from "@/lib/note-colors.ts";
 import { LabelBadge } from "./LabelPicker.tsx";
 import { format, isPast, isToday } from "date-fns";
 import { downloadMarkdown } from "@/lib/note-to-markdown.ts";
@@ -9,6 +9,7 @@ import type { Doc } from "@/convex/_generated/dataModel.d.ts";
 type Props = {
   note: Doc<"notes">;
   labels: Doc<"labels">[];
+  boards: Doc<"boards">[];
   onEdit: (note: Doc<"notes">) => void;
   onDelete: (id: Doc<"notes">["_id"]) => void;
   onTogglePin: (id: Doc<"notes">["_id"]) => void;
@@ -20,7 +21,7 @@ function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 
-export default function NoteCard({ note, labels, onEdit, onDelete, onTogglePin, onShare, isNew }: Props) {
+export default function NoteCard({ note, labels, boards, onEdit, onDelete, onTogglePin, onShare, isNew }: Props) {
   const color = NOTE_COLORS[note.colorIndex % NOTE_COLORS.length];
   const isHtml = note.content.startsWith("<");
   const preview = isHtml ? stripHtml(note.content) : note.content;
@@ -30,6 +31,9 @@ export default function NoteCard({ note, labels, onEdit, onDelete, onTogglePin, 
   const isOverdue = due && isPast(due) && !isToday(due);
   const isDueToday = due && isToday(due);
   const hasReminder = !!note.reminderAt;
+
+  const board = note.boardId ? boards.find((b) => b._id === note.boardId) : undefined;
+  const boardColor = board ? BOARD_COLORS[board.colorIndex % BOARD_COLORS.length] : undefined;
 
   return (
     <div
@@ -76,6 +80,19 @@ export default function NoteCard({ note, labels, onEdit, onDelete, onTogglePin, 
       {noteLabels.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-2">
           {noteLabels.map((l) => <LabelBadge key={l._id} label={l} />)}
+        </div>
+      )}
+
+      {/* Board name footer */}
+      {board && boardColor && (
+        <div className="flex items-center gap-1 mt-2">
+          <span
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold text-white"
+            style={{ background: boardColor.bg }}
+          >
+            <LayoutGrid size={8} />
+            {board.name}
+          </span>
         </div>
       )}
 
