@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { ArrowLeft, Pin, PinOff, Plus, StickyNote, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
-import { Textarea } from "@/components/ui/textarea.tsx";
 import { NOTE_COLORS } from "@/lib/note-colors.ts";
 import { cn } from "@/lib/utils.ts";
 
@@ -111,12 +110,12 @@ export default function DemoNotesPage() {
             placeholder="Note title"
             className="rounded-xl border-0 bg-muted text-base font-semibold"
           />
-          <Textarea
+          <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Write something..."
             rows={4}
-            className="rounded-xl border-0 bg-muted"
+            className="w-full resize-y rounded-xl bg-muted px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           <div className="flex flex-wrap items-center gap-2">
             {NOTE_COLORS.map((color, i) => (
