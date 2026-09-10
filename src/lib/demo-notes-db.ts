@@ -5,6 +5,8 @@ export type DemoNote = {
   colorIndex: number;
   isPinned: boolean;
   createdAt: string;
+  dueDate?: string;
+  reminderAt?: string;
 };
 
 const DB_NAME = "cx-notes-demo";
