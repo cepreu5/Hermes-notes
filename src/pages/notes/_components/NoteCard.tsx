@@ -1,8 +1,9 @@
-import { Pin, Pencil, Trash2, Calendar, Bell } from "lucide-react";
+import { Pin, Pencil, Trash2, Calendar, Bell, Download, Share2 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { NOTE_COLORS } from "@/lib/note-colors.ts";
 import { LabelBadge } from "./LabelPicker.tsx";
 import { format, isPast, isToday } from "date-fns";
+import { downloadMarkdown } from "@/lib/note-to-markdown.ts";
 import type { Doc } from "@/convex/_generated/dataModel.d.ts";
 
 type Props = {
@@ -11,6 +12,7 @@ type Props = {
   onEdit: (note: Doc<"notes">) => void;
   onDelete: (id: Doc<"notes">["_id"]) => void;
   onTogglePin: (id: Doc<"notes">["_id"]) => void;
+  onShare?: (note: Doc<"notes">) => void;
   isNew?: boolean;
 };
 
@@ -18,7 +20,7 @@ function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 
-export default function NoteCard({ note, labels, onEdit, onDelete, onTogglePin, isNew }: Props) {
+export default function NoteCard({ note, labels, onEdit, onDelete, onTogglePin, onShare, isNew }: Props) {
   const color = NOTE_COLORS[note.colorIndex % NOTE_COLORS.length];
   const isHtml = note.content.startsWith("<");
   const preview = isHtml ? stripHtml(note.content) : note.content;
@@ -51,17 +53,12 @@ export default function NoteCard({ note, labels, onEdit, onDelete, onTogglePin, 
       )}
       <p className="text-xs text-gray-700 line-clamp-4 leading-relaxed whitespace-pre-wrap">{preview}</p>
 
-      {/* Due date + reminder badges */}
       {(due || hasReminder) && (
         <div className="flex items-center gap-1.5 mt-2 flex-wrap">
           {due && (
             <span className={cn(
               "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold",
-              isOverdue
-                ? "bg-red-500/20 text-red-700"
-                : isDueToday
-                ? "bg-amber-400/30 text-amber-800"
-                : "bg-black/10 text-gray-700"
+              isOverdue ? "bg-red-500/20 text-red-700" : isDueToday ? "bg-amber-400/30 text-amber-800" : "bg-black/10 text-gray-700"
             )}>
               <Calendar size={9} />
               {format(due, "MMM d")}
@@ -97,6 +94,24 @@ export default function NoteCard({ note, labels, onEdit, onDelete, onTogglePin, 
         >
           <Pencil size={13} className="text-gray-700" />
         </button>
+        <button
+          className="w-7 h-7 rounded-full flex items-center justify-center bg-black/10 hover:bg-black/20 transition-colors"
+          onClick={(e) => { e.stopPropagation(); downloadMarkdown(note.title, note.content, note.dueDate, note.reminderAt); }}
+          aria-label="Download as Markdown"
+          title="Download as Markdown"
+        >
+          <Download size={13} className="text-gray-700" />
+        </button>
+        {onShare && (
+          <button
+            className="w-7 h-7 rounded-full flex items-center justify-center bg-black/10 hover:bg-black/20 transition-colors"
+            onClick={(e) => { e.stopPropagation(); onShare(note); }}
+            aria-label="Share"
+            title="Share note"
+          >
+            <Share2 size={13} className="text-gray-700" />
+          </button>
+        )}
         <button
           className="w-7 h-7 rounded-full flex items-center justify-center bg-black/10 hover:bg-red-400 transition-colors"
           onClick={(e) => { e.stopPropagation(); onDelete(note._id); }}

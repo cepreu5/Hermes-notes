@@ -49,4 +49,13 @@ export default defineSchema({
   })
     .index("by_secret", ["secret"])
     .index("by_visitorId", ["visitorId"]),
+
+  // Public share links for notes
+  sharedNotes: defineTable({
+    noteId: v.id("notes"),
+    token: v.string(),       // random token used in the URL
+    createdAt: v.string(),   // ISO timestamp
+  })
+    .index("by_token", ["token"])
+    .index("by_noteId", ["noteId"]),
 });
