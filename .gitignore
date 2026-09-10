@@ -13,3 +13,4 @@ build/
 *.tsbuildinfo
 node_modules/.tmp/
 pnpm-lock.yaml
+convex/_generated/
