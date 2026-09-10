@@ -63,7 +63,7 @@ export default function NotesApp() {
   const [showBoardMenu, setShowBoardMenu] = useState(false);
   const searchId = useId();
 
-  const boards = useQuery(api.boards.list);
+  const boards = useQuery(api.boards.list) ?? [];
   const labels = useQuery(api.labels.list) ?? [];
   const notes = useQuery(api.notes.list, search ? "skip" : { boardId: activeBoardId });
   const searchResults = useQuery(api.notes.search, search ? { query: search } : "skip");
@@ -83,7 +83,7 @@ export default function NotesApp() {
 
   const pinnedNotes = displayNotes?.filter((n) => n.isPinned) ?? [];
   const unpinnedNotes = displayNotes?.filter((n) => !n.isPinned) ?? [];
-  const activeBoard = boards?.find((b) => b._id === activeBoardId);
+  const activeBoard = boards.find((b) => b._id === activeBoardId);
   const activeLabel = labels.find((l) => l._id === activeLabelId);
 
   const handleSaveNote = useCallback(
@@ -173,7 +173,7 @@ export default function NotesApp() {
                   <button className="w-full text-left px-4 py-2.5 text-sm font-semibold hover:bg-muted transition-colors flex items-center gap-2" onClick={() => { setActiveBoardId(undefined); setShowBoardMenu(false); }} role="menuitem">
                     <span className="w-3 h-3 rounded-full bg-primary flex-shrink-0" />All notes
                   </button>
-                  {(boards ?? []).map((board) => {
+                  {boards.map((board) => {
                     const bc = BOARD_COLORS[board.colorIndex % BOARD_COLORS.length];
                     return (
                       <div key={board._id} className="group flex items-center px-2">
@@ -279,7 +279,7 @@ export default function NotesApp() {
                 <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
                   <span className="w-4 h-0.5 bg-muted-foreground/40 rounded" />Pinned<span className="w-4 h-0.5 bg-muted-foreground/40 rounded" />
                 </h2>
-                <SortableNoteGrid notes={pinnedNotes} labels={labels} onEdit={(n) => setNoteModal({ mode: "edit", note: n })} onDelete={handleDeleteNote} onTogglePin={handleTogglePin} newNoteIds={newNoteIds} />
+                <SortableNoteGrid notes={pinnedNotes} labels={labels} boards={boards} onEdit={(n) => setNoteModal({ mode: "edit", note: n })} onDelete={handleDeleteNote} onTogglePin={handleTogglePin} newNoteIds={newNoteIds} />
               </section>
             )}
             {unpinnedNotes.length > 0 && (
@@ -289,7 +289,7 @@ export default function NotesApp() {
                     <span className="w-4 h-0.5 bg-muted-foreground/40 rounded" />Others<span className="w-4 h-0.5 bg-muted-foreground/40 rounded" />
                   </h2>
                 )}
-                <SortableNoteGrid notes={unpinnedNotes} labels={labels} onEdit={(n) => setNoteModal({ mode: "edit", note: n })} onDelete={handleDeleteNote} onTogglePin={handleTogglePin} newNoteIds={newNoteIds} />
+                <SortableNoteGrid notes={unpinnedNotes} labels={labels} boards={boards} onEdit={(n) => setNoteModal({ mode: "edit", note: n })} onDelete={handleDeleteNote} onTogglePin={handleTogglePin} newNoteIds={newNoteIds} />
               </section>
             )}
           </div>
