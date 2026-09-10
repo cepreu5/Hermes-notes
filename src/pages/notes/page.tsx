@@ -1,16 +1,12 @@
 import { useState, useCallback, useId } from "react";
-import { useQuery, useMutation, useConvexAuth } from "convex/react";
-import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
-import { Plus, Search, X, StickyNote, LayoutGrid, ChevronDown, Pencil, Trash2, LogOut, WifiOff, Moon, Sun, Download, Tag, Bell, BellOff } from "lucide-react";
-import { usePushNotifications } from "@/hooks/use-push-notifications.ts";
+import { Plus, Search, X, StickyNote, LayoutGrid, ChevronDown, Pencil, Trash2, WifiOff, Moon, Sun, Download, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { SignInButton } from "@/components/ui/signin.tsx";
-import { useAuth } from "@/hooks/use-auth.ts";
 import { useOnlineStatus } from "@/hooks/use-online-status.ts";
 import { BOARD_COLORS } from "@/lib/note-colors.ts";
 import { cn } from "@/lib/utils.ts";
@@ -30,21 +26,6 @@ type SaveNoteData = {
   dueDate?: string;
   reminderAt?: string;
 };
-
-function LandingPage() {
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-8 text-center">
-      <div className="fade-in-up space-y-6 max-w-md">
-        <div className="w-20 h-20 rounded-3xl bg-primary flex items-center justify-center mx-auto shadow-xl">
-          <StickyNote size={40} className="text-primary-foreground" />
-        </div>
-        <h1 className="text-4xl font-extrabold tracking-tight text-balance">CX Notes</h1>
-        <p className="text-muted-foreground text-lg">Your notes, organized in boards. Fast, secure, everywhere.</p>
-        <SignInButton className="rounded-2xl px-8 py-3 text-base font-bold shadow-lg" />
-      </div>
-    </div>
-  );
-}
 
 function useDarkMode() {
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
@@ -68,8 +49,7 @@ function useInstallPrompt() {
   return { canInstall: !!prompt, install };
 }
 
-function NotesAppInner() {
-  const { signout } = useAuth();
+export default function NotesApp() {
   const isOnline = useOnlineStatus();
   const { dark, toggle: toggleDark } = useDarkMode();
   const { canInstall, install } = useInstallPrompt();
@@ -86,7 +66,6 @@ function NotesAppInner() {
   const labels = useQuery(api.labels.list) ?? [];
   const notes = useQuery(api.notes.list, search ? "skip" : { boardId: activeBoardId });
   const searchResults = useQuery(api.notes.search, search ? { query: search } : "skip");
-  const currentUser = useQuery(api.users.getCurrentUserQuery);
 
   const createNote = useMutation(api.notes.create);
   const updateNote = useMutation(api.notes.update);
@@ -97,7 +76,6 @@ function NotesAppInner() {
   const deleteBoard = useMutation(api.boards.remove);
 
   const rawNotes = search ? searchResults : notes;
-  // Filter by active label client-side
   const displayNotes = activeLabelId
     ? rawNotes?.filter((n) => n.labelIds?.includes(activeLabelId))
     : rawNotes;
@@ -194,11 +172,11 @@ function NotesAppInner() {
                   <button className="w-full text-left px-4 py-2.5 text-sm font-semibold hover:bg-muted transition-colors flex items-center gap-2" onClick={() => { setActiveBoardId(undefined); setShowBoardMenu(false); }} role="menuitem">
                     <span className="w-3 h-3 rounded-full bg-primary flex-shrink-0" />All notes
                   </button>
-                  {boards?.map((board) => {
+                  {(boards ?? []).map((board) => {
                     const bc = BOARD_COLORS[board.colorIndex % BOARD_COLORS.length];
                     return (
-                      <div key={board._id} className="flex items-center group">
-                        <button className="flex-1 text-left px-4 py-2.5 text-sm hover:bg-muted transition-colors flex items-center gap-2" onClick={() => { setActiveBoardId(board._id); setShowBoardMenu(false); }} role="menuitem">
+                      <div key={board._id} className="group flex items-center px-2">
+                        <button className="flex-1 text-left px-2 py-2.5 text-sm hover:bg-muted transition-colors flex items-center gap-2" onClick={() => { setActiveBoardId(board._id); setShowBoardMenu(false); }} role="menuitem">
                           <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: bc.bg }} />
                           <span className="truncate">{board.name}</span>
                         </button>
@@ -223,18 +201,6 @@ function NotesAppInner() {
                 <Download size={13} /> Install
               </button>
             )}
-            {currentUser && (
-              <div className="flex items-center gap-2">
-                {currentUser.avatar ? (
-                  <img src={currentUser.avatar} alt={currentUser.name ?? "User"} className="w-8 h-8 rounded-full object-cover border border-border" />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-bold">{(currentUser.name ?? "U")[0].toUpperCase()}</div>
-                )}
-                <button onClick={() => signout()} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors" aria-label="Sign out">
-                  <LogOut size={15} className="text-muted-foreground" />
-                </button>
-              </div>
-            )}
           </div>
         </div>
 
@@ -258,19 +224,9 @@ function NotesAppInner() {
         {labels.length > 0 && (
           <div className="max-w-6xl mx-auto px-4 pb-2 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
             <Tag size={13} className="text-muted-foreground flex-shrink-0" />
-            <button
-              onClick={() => setActiveLabelId(undefined)}
-              className={cn("flex-shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold transition-colors",
-                !activeLabelId ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80")}
-            >All</button>
+            <button onClick={() => setActiveLabelId(undefined)} className={cn("flex-shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold transition-colors", !activeLabelId ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80")}>All</button>
             {labels.map((label) => (
-              <button
-                key={label._id}
-                onClick={() => setActiveLabelId(activeLabelId === label._id ? undefined : label._id)}
-                className={cn("flex-shrink-0 flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold transition-all border-2",
-                  activeLabelId === label._id ? "border-current" : "border-transparent opacity-70 hover:opacity-100")}
-                style={{ background: label.colorHex + "22", color: label.colorHex }}
-              >
+              <button key={label._id} onClick={() => setActiveLabelId(activeLabelId === label._id ? undefined : label._id)} className={cn("flex-shrink-0 flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold transition-all border-2", activeLabelId === label._id ? "border-current" : "border-transparent opacity-70 hover:opacity-100")} style={{ background: label.colorHex + "22", color: label.colorHex }}>
                 <span className="w-1.5 h-1.5 rounded-full" style={{ background: label.colorHex }} />
                 {label.name}
               </button>
@@ -281,8 +237,7 @@ function NotesAppInner() {
 
       {!isOnline && (
         <div className="slide-down sticky top-[57px] z-30 flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-950 border-b border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-sm font-semibold">
-          <WifiOff size={15} />
-          Offline mode - changes will sync when reconnected
+          <WifiOff size={15} />Offline mode - changes will sync when reconnected
         </div>
       )}
 
@@ -335,32 +290,13 @@ function NotesAppInner() {
         )}
       </main>
 
-      <button
-        onClick={() => setNoteModal({ mode: "create", boardId: activeBoardId })}
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-2xl flex items-center justify-center z-30 transition-all duration-250 hover:scale-110 hover:rotate-90 hover:shadow-primary/40 active:scale-95"
-        aria-label="New note"
-      >
+      <button onClick={() => setNoteModal({ mode: "create", boardId: activeBoardId })} className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-2xl flex items-center justify-center z-30 transition-all duration-250 hover:scale-110 hover:rotate-90 hover:shadow-primary/40 active:scale-95" aria-label="New note">
         <Plus size={26} />
       </button>
 
       {showBoardMenu && <div className="fixed inset-0 z-30" onClick={() => setShowBoardMenu(false)} aria-hidden="true" />}
-
       {noteModal && (<NoteModal note={noteModal.mode === "edit" ? noteModal.note : null} onSave={handleSaveNote} onClose={() => setNoteModal(null)} />)}
       {boardModal && (<BoardModal board={boardModal.mode === "edit" ? boardModal.board : null} onSave={handleSaveBoard} onClose={() => setBoardModal(null)} />)}
     </div>
-  );
-}
-
-export default function NotesApp() {
-  return (
-    <>
-      <AuthLoading>
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="w-10 h-10 rounded-full border-4 border-primary border-t-transparent spin" />
-        </div>
-      </AuthLoading>
-      <Unauthenticated><LandingPage /></Unauthenticated>
-      <Authenticated><NotesAppInner /></Authenticated>
-    </>
   );
 }
