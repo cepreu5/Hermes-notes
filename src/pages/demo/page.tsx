@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils.ts";
 import {
   deleteDemoNote,
   listDemoNotes,
-  migrateLegacyDemoNotes,
   putDemoNote,
   type DemoNote,
 } from "@/lib/demo-notes-db.ts";
@@ -26,7 +25,6 @@ export default function DemoNotesPage() {
     let cancelled = false;
     const load = async () => {
       try {
-        await migrateLegacyDemoNotes();
         const rows = await listDemoNotes();
         if (!cancelled) setNotes(rows);
       } catch {
