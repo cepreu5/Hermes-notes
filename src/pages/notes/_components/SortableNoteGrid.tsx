@@ -22,6 +22,7 @@ import type { Doc, Id } from "@/convex/_generated/dataModel.d.ts";
 type Props = {
   notes: Doc<"notes">[];
   labels: Doc<"labels">[];
+  boards: Doc<"boards">[];
   onEdit: (note: Doc<"notes">) => void;
   onDelete: (id: Id<"notes">) => void;
   onTogglePin: (id: Id<"notes">) => void;
@@ -30,10 +31,11 @@ type Props = {
 };
 
 function SortableNote({
-  note, labels, onEdit, onDelete, onTogglePin, isNew,
+  note, labels, boards, onEdit, onDelete, onTogglePin, isNew,
 }: {
   note: Doc<"notes">;
   labels: Doc<"labels">[];
+  boards: Doc<"boards">[];
   onEdit: (note: Doc<"notes">) => void;
   onDelete: (id: Id<"notes">) => void;
   onTogglePin: (id: Id<"notes">) => void;
@@ -52,13 +54,13 @@ function SortableNote({
   return (
     <div ref={setNodeRef} style={style} className="break-inside-avoid mb-4" {...attributes}>
       <div {...listeners} style={{ touchAction: "none" }}>
-        <NoteCard note={note} labels={labels} onEdit={onEdit} onDelete={onDelete} onTogglePin={onTogglePin} isNew={isNew} />
+        <NoteCard note={note} labels={labels} boards={boards} onEdit={onEdit} onDelete={onDelete} onTogglePin={onTogglePin} isNew={isNew} />
       </div>
     </div>
   );
 }
 
-export default function SortableNoteGrid({ notes, labels, onEdit, onDelete, onTogglePin, onReorder, newNoteIds }: Props) {
+export default function SortableNoteGrid({ notes, labels, boards, onEdit, onDelete, onTogglePin, onReorder, newNoteIds }: Props) {
   const [items, setItems] = useState(() => notes.map((n) => n._id));
 
   const noteMap = new Map(notes.map((n) => [n._id, n]));
@@ -92,6 +94,7 @@ export default function SortableNoteGrid({ notes, labels, onEdit, onDelete, onTo
               key={note._id}
               note={note}
               labels={labels}
+              boards={boards}
               onEdit={onEdit}
               onDelete={onDelete}
               onTogglePin={onTogglePin}
