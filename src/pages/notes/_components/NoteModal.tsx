@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils.ts";
 import { NOTE_COLORS } from "@/lib/note-colors.ts";
 import RichTextEditor from "./RichTextEditor.tsx";
 import LabelPicker from "./LabelPicker.tsx";
+import DemoLabelPicker from "../../demo/_components/DemoLabelPicker.tsx";
 import { format } from "date-fns";
 import { downloadMarkdown } from "@/lib/note-to-markdown.ts";
 import { useMutation, useQuery } from "convex/react";
@@ -18,7 +19,7 @@ export type NoteDraft = {
   title: string;
   content: string;
   colorIndex: number;
-  labelIds?: Id<"labels">[];
+  labelIds?: string[];
   dueDate?: string;
   reminderAt?: string;
 };
@@ -34,7 +35,7 @@ type Props = {
     reminderAt?: string;
   }) => void;
   onClose: () => void;
-  /** Demo mode hides features that require a signed-in account (sharing, labels). */
+  /** Demo mode stores labels locally and hides sharing, which needs an account. */
   demo?: boolean;
 };
 
@@ -54,7 +55,8 @@ export default function NoteModal({ note, onSave, onClose, demo = false }: Props
   const [title, setTitle] = useState(note?.title ?? "");
   const [content, setContent] = useState(note?.content ?? "");
   const [colorIndex, setColorIndex] = useState(note?.colorIndex ?? 0);
-  const [labelIds, setLabelIds] = useState<Id<"labels">[]>((note?.labelIds ?? []) as Id<"labels">[]);
+  // Ids are Convex label ids when signed in, and local uuids in demo mode
+  const [labelIds, setLabelIds] = useState<string[]>(note?.labelIds ?? []);
   const [dueDate, setDueDate] = useState(utcToLocalInput(note?.dueDate));
   const [reminderAt, setReminderAt] = useState(utcToLocalInput(note?.reminderAt));
   const [showPalette, setShowPalette] = useState(false);
@@ -87,7 +89,7 @@ export default function NoteModal({ note, onSave, onClose, demo = false }: Props
       title: title.trim(),
       content,
       colorIndex,
-      labelIds,
+      labelIds: labelIds as Id<"labels">[],
       dueDate: localInputToUtc(dueDate),
       reminderAt: localInputToUtc(reminderAt),
     });
@@ -271,11 +273,12 @@ export default function NoteModal({ note, onSave, onClose, demo = false }: Props
         {/* Labels */}
         <div className="px-5 py-2 border-t border-black/10">
           {demo ? (
-            <p className="text-xs font-semibold text-gray-600">
-              Labels and sharing need an account and are off in demo mode
-            </p>
+            <DemoLabelPicker selectedIds={labelIds} onChange={setLabelIds} />
           ) : (
-            <LabelPicker selectedIds={labelIds} onChange={setLabelIds} />
+            <LabelPicker
+              selectedIds={labelIds as Id<"labels">[]}
+              onChange={(ids) => setLabelIds(ids)}
+            />
           )}
         </div>
 
