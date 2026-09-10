@@ -81,20 +81,3 @@ export async function deleteDemoNote(id: string): Promise<void> {
     db.close();
   }
 }
-
-// One-time migration of demo notes previously kept in localStorage.
-export async function migrateLegacyDemoNotes(): Promise<void> {
-  const raw = localStorage.getItem("cx-notes-demo");
-  if (!raw) return;
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      for (const item of parsed) {
-        if (isDemoNote(item)) await putDemoNote(item);
-      }
-    }
-  } catch {
-    // Ignore unreadable legacy data
-  }
-  localStorage.removeItem("cx-notes-demo");
-}
