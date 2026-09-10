@@ -12,8 +12,19 @@ import { api } from "@/convex/_generated/api.js";
 import { toast } from "sonner";
 import type { Doc, Id } from "@/convex/_generated/dataModel.d.ts";
 
+// Editable shape shared by database notes and local demo notes
+export type NoteDraft = {
+  _id?: Id<"notes">;
+  title: string;
+  content: string;
+  colorIndex: number;
+  labelIds?: Id<"labels">[];
+  dueDate?: string;
+  reminderAt?: string;
+};
+
 type Props = {
-  note?: Doc<"notes"> | null;
+  note?: Doc<"notes"> | NoteDraft | null;
   onSave: (data: {
     title: string;
     content: string;
@@ -23,6 +34,8 @@ type Props = {
     reminderAt?: string;
   }) => void;
   onClose: () => void;
+  /** Demo mode hides features that require a signed-in account (sharing, labels). */
+  demo?: boolean;
 };
 
 function localInputToUtc(value: string): string | undefined {
@@ -37,7 +50,7 @@ function utcToLocalInput(iso: string | undefined): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export default function NoteModal({ note, onSave, onClose }: Props) {
+export default function NoteModal({ note, onSave, onClose, demo = false }: Props) {
   const [title, setTitle] = useState(note?.title ?? "");
   const [content, setContent] = useState(note?.content ?? "");
   const [colorIndex, setColorIndex] = useState(note?.colorIndex ?? 0);
@@ -50,10 +63,10 @@ export default function NoteModal({ note, onSave, onClose }: Props) {
   const [copied, setCopied] = useState(false);
   const color = NOTE_COLORS[colorIndex % NOTE_COLORS.length];
 
-  // Share link state — only available when editing an existing note
+  // Share link state — only available when editing an existing saved note
   const shareToken = useQuery(
     api.sharedNotes.getShareToken,
-    note?._id ? { noteId: note._id } : "skip"
+    !demo && note?._id ? { noteId: note._id } : "skip"
   );
   const createShareLink = useMutation(api.sharedNotes.createShareLink);
   const removeShareLink = useMutation(api.sharedNotes.removeShareLink);
@@ -125,7 +138,7 @@ export default function NoteModal({ note, onSave, onClose }: Props) {
 
   const hasDue = !!dueDate;
   const hasReminder = !!reminderAt;
-  const isExisting = !!note?._id;
+  const isExisting = !demo && !!note?._id;
 
   return (
     <div
@@ -224,7 +237,7 @@ export default function NoteModal({ note, onSave, onClose }: Props) {
           )}
         </div>
 
-        {/* Share link section — only for existing notes */}
+        {/* Share link section — only for existing saved notes */}
         {isExisting && (
           <div className="px-5 py-2 border-t border-black/10">
             {shareToken ? (
@@ -257,7 +270,13 @@ export default function NoteModal({ note, onSave, onClose }: Props) {
 
         {/* Labels */}
         <div className="px-5 py-2 border-t border-black/10">
-          <LabelPicker selectedIds={labelIds} onChange={setLabelIds} />
+          {demo ? (
+            <p className="text-xs font-semibold text-gray-600">
+              Labels and sharing need an account and are off in demo mode
+            </p>
+          ) : (
+            <LabelPicker selectedIds={labelIds} onChange={setLabelIds} />
+          )}
         </div>
 
         {/* Footer */}
