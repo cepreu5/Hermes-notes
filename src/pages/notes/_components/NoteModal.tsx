@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { X, Palette, Calendar, Bell, BellOff, Download, Share2, Link, Check } from "lucide-react";
+import { X, Palette, Calendar, Bell, BellOff, Download, Share2, Link, Check, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { cn } from "@/lib/utils.ts";
-import { NOTE_COLORS } from "@/lib/note-colors.ts";
+import { NOTE_COLORS, BOARD_COLORS } from "@/lib/note-colors.ts";
 import RichTextEditor from "./RichTextEditor.tsx";
 import LabelPicker from "./LabelPicker.tsx";
 import DemoLabelPicker from "../../demo/_components/DemoLabelPicker.tsx";
@@ -35,6 +35,8 @@ type Props = {
     reminderAt?: string;
   }) => void;
   onClose: () => void;
+  /** Board this note belongs to — shown as a badge in the footer. */
+  boardInfo?: { name: string; colorIndex: number };
   /** Demo mode stores labels locally and hides sharing, which needs an account. */
   demo?: boolean;
 };
@@ -51,7 +53,7 @@ function utcToLocalInput(iso: string | undefined): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export default function NoteModal({ note, onSave, onClose, demo = false }: Props) {
+export default function NoteModal({ note, onSave, onClose, boardInfo, demo = false }: Props) {
   const [title, setTitle] = useState(note?.title ?? "");
   const [content, setContent] = useState(note?.content ?? "");
   const [colorIndex, setColorIndex] = useState(note?.colorIndex ?? 0);
@@ -141,6 +143,7 @@ export default function NoteModal({ note, onSave, onClose, demo = false }: Props
   const hasDue = !!dueDate;
   const hasReminder = !!reminderAt;
   const isExisting = !demo && !!note?._id;
+  const boardColor = boardInfo ? BOARD_COLORS[boardInfo.colorIndex % BOARD_COLORS.length] : undefined;
 
   return (
     <div
@@ -306,6 +309,16 @@ export default function NoteModal({ note, onSave, onClose, demo = false }: Props
             >
               <Download size={15} className="text-gray-700" />
             </button>
+            {/* Board badge */}
+            {boardInfo && boardColor && (
+              <span
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold text-white"
+                style={{ background: boardColor.bg }}
+              >
+                <LayoutGrid size={10} />
+                {boardInfo.name}
+              </span>
+            )}
           </div>
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" onClick={handleClose} className="text-gray-700 hover:bg-black/10 rounded-xl">Cancel</Button>
