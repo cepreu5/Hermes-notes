@@ -34,8 +34,19 @@ export default defineSchema({
     pinnedAt: v.optional(v.string()),
     order: v.number(),
     labelIds: v.optional(v.array(v.id("labels"))),
+    dueDate: v.optional(v.string()),
+    reminderAt: v.optional(v.string()),
+    reminderSent: v.optional(v.boolean()),
   })
     .index("by_userId", ["userId"])
     .index("by_boardId", ["boardId"])
-    .index("by_userId_pinned", ["userId", "isPinned"]),
+    .index("by_userId_pinned", ["userId", "isPinned"])
+    .index("by_reminderAt", ["reminderAt"]),
+
+  pushIdentities: defineTable({
+    secret: v.string(),
+    visitorId: v.string(),
+  })
+    .index("by_secret", ["secret"])
+    .index("by_visitorId", ["visitorId"]),
 });
