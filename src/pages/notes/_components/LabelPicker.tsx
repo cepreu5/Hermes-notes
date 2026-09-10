@@ -84,7 +84,7 @@ export default function LabelPicker({ selectedIds, onChange }: Props) {
                   ))}
                 </div>
                 <Input value={editName} onChange={(e) => setEditName(e.target.value)}
-                  className="h-6 text-xs px-1.5 rounded-lg w-20 bg-white/80 border-0"
+                  className="h-6 text-xs px-1.5 rounded-lg w-20 bg-white/80 border-0 text-gray-900 placeholder:text-gray-500"
                   onKeyDown={(e) => { if (e.key === "Enter") handleUpdate(); if (e.key === "Escape") setEditing(null); }}
                   autoFocus />
                 <button type="button" onClick={handleUpdate} className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-black/10"><Check size={11} /></button>
@@ -123,7 +123,7 @@ export default function LabelPicker({ selectedIds, onChange }: Props) {
               ))}
             </div>
             <Input value={newName} onChange={(e) => setNewName(e.target.value)}
-              placeholder="Label name..." className="h-6 text-xs px-1.5 rounded-lg w-24 bg-white/80 border-0"
+              placeholder="Label name..." className="h-6 text-xs px-1.5 rounded-lg w-24 bg-white/80 border-0 text-gray-900 placeholder:text-gray-500"
               onKeyDown={(e) => { if (e.key === "Enter") handleCreate(); if (e.key === "Escape") setAdding(false); }}
               autoFocus />
             <button type="button" onClick={handleCreate} className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-black/10"><Check size={11} /></button>
