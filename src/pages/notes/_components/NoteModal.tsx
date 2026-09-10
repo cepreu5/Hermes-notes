@@ -39,31 +39,53 @@ type Props = {
   demo?: boolean;
 };
 
-function localInputToUtc(value: string): string | undefined {
-  if (!value) return undefined;
-  return new Date(value).toISOString();
-}
-
-function utcToLocalInput(iso: string | undefined): string {
+// ISO UTC → "YYYY-MM-DD" in local time
+function toDatePart(iso: string | undefined): string {
   if (!iso) return "";
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+// ISO UTC → "HH:mm" in local time
+function toTimePart(iso: string | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// "YYYY-MM-DD" + "HH:mm" → ISO UTC string (or undefined if either is empty)
+function combineToUtc(date: string, time: string): string | undefined {
+  if (!date) return undefined;
+  const t = time || "00:00";
+  return new Date(`${date}T${t}`).toISOString();
 }
 
 export default function NoteModal({ note, onSave, onClose, demo = false }: Props) {
   const [title, setTitle] = useState(note?.title ?? "");
   const [content, setContent] = useState(note?.content ?? "");
   const [colorIndex, setColorIndex] = useState(note?.colorIndex ?? 0);
-  // Ids are Convex label ids when signed in, and local uuids in demo mode
   const [labelIds, setLabelIds] = useState<string[]>(note?.labelIds ?? []);
-  const [dueDate, setDueDate] = useState(utcToLocalInput(note?.dueDate));
-  const [reminderAt, setReminderAt] = useState(utcToLocalInput(note?.reminderAt));
+
+  // Due date stored as separate date + time strings for reliable 24h input
+  const [dueDate, setDueDate] = useState(toDatePart(note?.dueDate));
+  const [dueTime, setDueTime] = useState(toTimePart(note?.dueDate));
+
+  // Reminder stored as separate date + time strings
+  const [reminderDate, setReminderDate] = useState(toDatePart(note?.reminderAt));
+  const [reminderTime, setReminderTime] = useState(toTimePart(note?.reminderAt));
+
   const [showPalette, setShowPalette] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [visible, setVisible] = useState(false);
   const [copied, setCopied] = useState(false);
   const color = NOTE_COLORS[colorIndex % NOTE_COLORS.length];
+
+  const dueDateUtc = combineToUtc(dueDate, dueTime);
+  const reminderUtc = combineToUtc(reminderDate, reminderTime);
+  const hasDue = !!dueDate;
+  const hasReminder = !!reminderDate;
 
   // Share link state — only available when editing an existing saved note
   const shareToken = useQuery(
@@ -90,8 +112,8 @@ export default function NoteModal({ note, onSave, onClose, demo = false }: Props
       content,
       colorIndex,
       labelIds: labelIds as Id<"labels">[],
-      dueDate: localInputToUtc(dueDate),
-      reminderAt: localInputToUtc(reminderAt),
+      dueDate: dueDateUtc,
+      reminderAt: reminderUtc,
     });
     handleClose();
   };
@@ -138,8 +160,6 @@ export default function NoteModal({ note, onSave, onClose, demo = false }: Props
     }
   };
 
-  const hasDue = !!dueDate;
-  const hasReminder = !!reminderAt;
   const isExisting = !demo && !!note?._id;
 
   return (
@@ -183,6 +203,7 @@ export default function NoteModal({ note, onSave, onClose, demo = false }: Props
         {/* Due date / reminder section */}
         <div className="px-5 py-2 border-t border-black/10 space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Due date toggle */}
             <button
               type="button"
               onClick={() => setShowDatePicker((v) => !v)}
@@ -194,46 +215,99 @@ export default function NoteModal({ note, onSave, onClose, demo = false }: Props
               )}
             >
               <Calendar size={13} />
-              {hasDue ? format(new Date(dueDate), "MMM d, HH:mm") : "Add due date"}
+              {hasDue && dueDateUtc
+                ? format(new Date(dueDateUtc), "MMM d, HH:mm")
+                : "Add due date"}
             </button>
             {hasDue && (
-              <button type="button" onClick={() => setDueDate("")} className="w-5 h-5 rounded-full flex items-center justify-center bg-black/10 hover:bg-black/20 transition-colors" aria-label="Remove due date">
+              <button
+                type="button"
+                onClick={() => { setDueDate(""); setDueTime(""); }}
+                className="w-5 h-5 rounded-full flex items-center justify-center bg-black/10 hover:bg-black/20 transition-colors"
+                aria-label="Remove due date"
+              >
                 <X size={9} className="text-gray-700" />
               </button>
             )}
+
+            {/* Reminder toggle */}
             <button
               type="button"
               onClick={() => {
-                if (hasReminder) { setReminderAt(""); }
-                else {
-                  const base = dueDate ? new Date(dueDate) : new Date(Date.now() + 60 * 60 * 1000);
-                  setReminderAt(utcToLocalInput(base.toISOString()));
+                if (hasReminder) {
+                  setReminderDate("");
+                  setReminderTime("");
+                } else {
+                  // Default reminder = due date if set, otherwise now + 1h
+                  if (dueDate) {
+                    setReminderDate(dueDate);
+                    setReminderTime(dueTime || "09:00");
+                  } else {
+                    const base = new Date(Date.now() + 60 * 60 * 1000);
+                    setReminderDate(toDatePart(base.toISOString()));
+                    setReminderTime(toTimePart(base.toISOString()));
+                  }
                   setShowDatePicker(true);
                 }
               }}
               className={cn(
                 "flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold transition-all border",
-                hasReminder ? "bg-amber-400/30 border-amber-500/30 text-amber-800" : "bg-black/10 border-transparent text-gray-600 hover:bg-black/15"
+                hasReminder
+                  ? "bg-amber-400/30 border-amber-500/30 text-amber-800"
+                  : "bg-black/10 border-transparent text-gray-600 hover:bg-black/15"
               )}
             >
               {hasReminder ? <Bell size={13} /> : <BellOff size={13} />}
-              {hasReminder ? format(new Date(reminderAt), "MMM d, HH:mm") : "Remind me"}
+              {hasReminder && reminderUtc
+                ? format(new Date(reminderUtc), "MMM d, HH:mm")
+                : "Remind me"}
             </button>
             {hasReminder && (
-              <button type="button" onClick={() => setReminderAt("")} className="w-5 h-5 rounded-full flex items-center justify-center bg-black/10 hover:bg-black/20 transition-colors" aria-label="Remove reminder">
+              <button
+                type="button"
+                onClick={() => { setReminderDate(""); setReminderTime(""); }}
+                className="w-5 h-5 rounded-full flex items-center justify-center bg-black/10 hover:bg-black/20 transition-colors"
+                aria-label="Remove reminder"
+              >
                 <X size={9} className="text-gray-700" />
               </button>
             )}
           </div>
+
+          {/* Date + time pickers — split to guarantee 24h time input */}
           {showDatePicker && (
-            <div className="grid grid-cols-2 gap-2 fade-in-up" onClick={(e) => e.stopPropagation()}>
-              <div>
-                <label className="text-[10px] font-bold uppercase text-gray-600 tracking-wide block mb-0.5">Due date</label>
-                <input type="datetime-local" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full rounded-xl bg-white/70 px-2 py-1 text-xs text-gray-800 border-0 outline-none focus:ring-2 focus:ring-gray-400" />
+            <div className="grid grid-cols-2 gap-3 fade-in-up" onClick={(e) => e.stopPropagation()}>
+              {/* Due date */}
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold uppercase text-gray-600 tracking-wide">Due date</p>
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="w-full rounded-xl bg-white/70 px-2 py-1 text-xs text-gray-800 border-0 outline-none focus:ring-2 focus:ring-gray-400"
+                />
+                <input
+                  type="time"
+                  value={dueTime}
+                  onChange={(e) => setDueTime(e.target.value)}
+                  className="w-full rounded-xl bg-white/70 px-2 py-1 text-xs text-gray-800 border-0 outline-none focus:ring-2 focus:ring-gray-400"
+                />
               </div>
-              <div>
-                <label className="text-[10px] font-bold uppercase text-gray-600 tracking-wide block mb-0.5">Reminder</label>
-                <input type="datetime-local" value={reminderAt} onChange={(e) => setReminderAt(e.target.value)} className="w-full rounded-xl bg-white/70 px-2 py-1 text-xs text-gray-800 border-0 outline-none focus:ring-2 focus:ring-gray-400" />
+              {/* Reminder */}
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold uppercase text-gray-600 tracking-wide">Reminder</p>
+                <input
+                  type="date"
+                  value={reminderDate}
+                  onChange={(e) => setReminderDate(e.target.value)}
+                  className="w-full rounded-xl bg-white/70 px-2 py-1 text-xs text-gray-800 border-0 outline-none focus:ring-2 focus:ring-gray-400"
+                />
+                <input
+                  type="time"
+                  value={reminderTime}
+                  onChange={(e) => setReminderTime(e.target.value)}
+                  className="w-full rounded-xl bg-white/70 px-2 py-1 text-xs text-gray-800 border-0 outline-none focus:ring-2 focus:ring-gray-400"
+                />
               </div>
             </div>
           )}
@@ -244,7 +318,9 @@ export default function NoteModal({ note, onSave, onClose, demo = false }: Props
           <div className="px-5 py-2 border-t border-black/10">
             {shareToken ? (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-600 font-semibold flex items-center gap-1"><Link size={11} /> Shared</span>
+                <span className="text-xs text-gray-600 font-semibold flex items-center gap-1">
+                  <Link size={11} /> Shared
+                </span>
                 <button
                   onClick={handleCopyLink}
                   className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold bg-black/10 hover:bg-black/20 transition-colors text-gray-700"
@@ -286,20 +362,36 @@ export default function NoteModal({ note, onSave, onClose, demo = false }: Props
         <div className="flex items-center justify-between px-4 pb-4 pt-2 border-t border-black/10">
           <div className="flex items-center gap-2">
             <div className="relative">
-              <button onClick={() => setShowPalette((p) => !p)} className="w-8 h-8 rounded-full flex items-center justify-center bg-black/10 hover:bg-black/20 transition-colors" aria-label="Pick color">
+              <button
+                onClick={() => setShowPalette((p) => !p)}
+                className="w-8 h-8 rounded-full flex items-center justify-center bg-black/10 hover:bg-black/20 transition-colors"
+                aria-label="Pick color"
+              >
                 <Palette size={15} className="text-gray-700" />
               </button>
               {showPalette && (
-                <div className="absolute bottom-10 left-0 flex gap-2 p-2 rounded-2xl shadow-lg z-10 fade-in-up" style={{ background: "rgba(255,255,255,0.95)", backdropFilter: "blur(8px)" }}>
+                <div
+                  className="absolute bottom-10 left-0 flex gap-2 p-2 rounded-2xl shadow-lg z-10 fade-in-up"
+                  style={{ background: "rgba(255,255,255,0.95)", backdropFilter: "blur(8px)" }}
+                >
                   {NOTE_COLORS.map((c, i) => (
-                    <button key={i} onClick={() => { setColorIndex(i); setShowPalette(false); }} className={cn("w-6 h-6 rounded-full border-2 transition-transform hover:scale-125", colorIndex === i ? "border-gray-700 scale-125" : "border-transparent")} style={{ background: c.bg }} aria-label={c.label} title={c.label} />
+                    <button
+                      key={i}
+                      onClick={() => { setColorIndex(i); setShowPalette(false); }}
+                      className={cn(
+                        "w-6 h-6 rounded-full border-2 transition-transform hover:scale-125",
+                        colorIndex === i ? "border-gray-700 scale-125" : "border-transparent"
+                      )}
+                      style={{ background: c.bg }}
+                      aria-label={c.label}
+                      title={c.label}
+                    />
                   ))}
                 </div>
               )}
             </div>
-            {/* Download as Markdown */}
             <button
-              onClick={() => downloadMarkdown(title, content, localInputToUtc(dueDate), localInputToUtc(reminderAt))}
+              onClick={() => downloadMarkdown(title, content, dueDateUtc, reminderUtc)}
               className="w-8 h-8 rounded-full flex items-center justify-center bg-black/10 hover:bg-black/20 transition-colors"
               aria-label="Download as Markdown"
               title="Download as Markdown"
@@ -308,8 +400,12 @@ export default function NoteModal({ note, onSave, onClose, demo = false }: Props
             </button>
           </div>
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={handleClose} className="text-gray-700 hover:bg-black/10 rounded-xl">Cancel</Button>
-            <Button size="sm" onClick={handleSave} className="rounded-xl bg-gray-800/80 hover:bg-gray-900 text-white">Save</Button>
+            <Button variant="ghost" size="sm" onClick={handleClose} className="text-gray-700 hover:bg-black/10 rounded-xl">
+              Cancel
+            </Button>
+            <Button size="sm" onClick={handleSave} className="rounded-xl bg-gray-800/80 hover:bg-gray-900 text-white">
+              Save
+            </Button>
           </div>
         </div>
       </div>
