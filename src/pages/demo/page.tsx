@@ -9,8 +9,10 @@ import { NOTE_COLORS } from "@/lib/note-colors.ts";
 import NoteModal, { type NoteDraft } from "../notes/_components/NoteModal.tsx";
 import {
   deleteDemoNote,
+  listDemoLabels,
   listDemoNotes,
   putDemoNote,
+  type DemoLabel,
   type DemoNote,
 } from "@/lib/demo-notes-db.ts";
 
@@ -23,20 +25,25 @@ function toDraft(note: DemoNote): NoteDraft {
     colorIndex: note.colorIndex,
     dueDate: note.dueDate,
     reminderAt: note.reminderAt,
+    labelIds: note.labelIds,
   };
 }
 
 export default function DemoNotesPage() {
   const [notes, setNotes] = useState<DemoNote[] | undefined>(undefined);
+  const [labels, setLabels] = useState<DemoLabel[]>([]);
   const [modal, setModal] = useState<ModalState>(null);
 
-  // Load demo notes from IndexedDB (browser-only storage, never the database).
+  // Load demo notes and labels from IndexedDB (browser-only, never the database).
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       try {
-        const rows = await listDemoNotes();
-        if (!cancelled) setNotes(rows);
+        const [rows, labelRows] = await Promise.all([listDemoNotes(), listDemoLabels()]);
+        if (!cancelled) {
+          setNotes(rows);
+          setLabels(labelRows);
+        }
       } catch {
         if (!cancelled) {
           setNotes([]);
@@ -50,11 +57,20 @@ export default function DemoNotesPage() {
     };
   }, []);
 
+  const refreshLabels = async () => {
+    try {
+      setLabels(await listDemoLabels());
+    } catch {
+      // Labels stay as-is if the read fails
+    }
+  };
+
   const handleSave = useCallback(
     async (data: {
       title: string;
       content: string;
       colorIndex: number;
+      labelIds: string[];
       dueDate?: string;
       reminderAt?: string;
     }) => {
@@ -68,15 +84,15 @@ export default function DemoNotesPage() {
         createdAt: editing?.createdAt ?? new Date().toISOString(),
         dueDate: data.dueDate,
         reminderAt: data.reminderAt,
+        labelIds: data.labelIds,
       };
       try {
         await putDemoNote(note);
-        setNotes((prev) => {
-          const rest = (prev ?? []).filter((n) => n.id !== note.id);
-          return editing
+        setNotes((prev) =>
+          editing
             ? (prev ?? []).map((n) => (n.id === note.id ? note : n))
-            : [note, ...rest];
-        });
+            : [note, ...(prev ?? [])],
+        );
         toast.success(editing ? "Demo note saved" : "Demo note created");
       } catch {
         toast.error("Could not save the note");
@@ -103,6 +119,11 @@ export default function DemoNotesPage() {
     } catch {
       toast.error("Could not update the note");
     }
+  };
+
+  const closeModal = () => {
+    setModal(null);
+    void refreshLabels();
   };
 
   const sorted = [...(notes ?? [])].sort(
@@ -151,56 +172,73 @@ export default function DemoNotesPage() {
           </div>
         ) : (
           <div className="columns-1 gap-4 space-y-4 sm:columns-2 lg:columns-3">
-            {sorted.map((note) => (
-              <div
-                key={note.id}
-                className="group break-inside-avoid cursor-pointer rounded-2xl p-4 shadow-sm transition-shadow hover:shadow-md"
-                onClick={() => setModal({ mode: "edit", note })}
-                style={{ background: NOTE_COLORS[note.colorIndex % NOTE_COLORS.length].bg }}
-              >
-                <div className="flex items-start gap-2">
-                  <h3 className="flex-1 font-bold break-words text-neutral-900">
-                    {note.title || "Untitled"}
-                  </h3>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); void togglePin(note); }}
-                    className="cursor-pointer text-neutral-700 hover:text-neutral-900"
-                    aria-label={note.isPinned ? "Unpin note" : "Pin note"}
-                  >
-                    {note.isPinned ? <PinOff size={14} /> : <Pin size={14} />}
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); void removeNote(note.id); }}
-                    className="cursor-pointer text-neutral-700 hover:text-red-600"
-                    aria-label="Delete note"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-                {note.content && (
-                  <div
-                    className="mt-2 text-sm break-words text-neutral-800 [&_a]:underline [&_li]:ml-4 [&_li]:list-disc"
-                    dangerouslySetInnerHTML={{ __html: note.content }}
-                  />
-                )}
-                {(note.dueDate || note.reminderAt) && (
-                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                    {note.dueDate && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-black/10 px-2 py-0.5 text-[10px] font-bold text-neutral-800">
-                        <Calendar size={10} />
-                        {format(new Date(note.dueDate), "MMM d, HH:mm")}
-                      </span>
-                    )}
-                    {note.reminderAt && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/40 px-2 py-0.5 text-[10px] font-bold text-amber-900">
-                        <Bell size={10} />
-                        {format(new Date(note.reminderAt), "MMM d, HH:mm")}
-                      </span>
-                    )}
+            {sorted.map((note) => {
+              const noteLabels = labels.filter((l) => note.labelIds?.includes(l.id));
+              return (
+                <div
+                  key={note.id}
+                  className="group break-inside-avoid cursor-pointer rounded-2xl p-4 shadow-sm transition-shadow hover:shadow-md"
+                  onClick={() => setModal({ mode: "edit", note })}
+                  style={{ background: NOTE_COLORS[note.colorIndex % NOTE_COLORS.length].bg }}
+                >
+                  <div className="flex items-start gap-2">
+                    <h3 className="flex-1 font-bold break-words text-neutral-900">
+                      {note.title || "Untitled"}
+                    </h3>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); void togglePin(note); }}
+                      className="cursor-pointer text-neutral-700 hover:text-neutral-900"
+                      aria-label={note.isPinned ? "Unpin note" : "Pin note"}
+                    >
+                      {note.isPinned ? <PinOff size={14} /> : <Pin size={14} />}
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); void removeNote(note.id); }}
+                      className="cursor-pointer text-neutral-700 hover:text-red-600"
+                      aria-label="Delete note"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
-                )}
-              </div>
-            ))}
+                  {note.content && (
+                    <div
+                      className="mt-2 text-sm break-words text-neutral-800 [&_a]:underline [&_li]:ml-4 [&_li]:list-disc"
+                      dangerouslySetInnerHTML={{ __html: note.content }}
+                    />
+                  )}
+                  {noteLabels.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-1">
+                      {noteLabels.map((label) => (
+                        <span
+                          key={label.id}
+                          className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                          style={{ background: label.colorHex + "33", color: label.colorHex }}
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full" style={{ background: label.colorHex }} />
+                          {label.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {(note.dueDate || note.reminderAt) && (
+                    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                      {note.dueDate && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-black/10 px-2 py-0.5 text-[10px] font-bold text-neutral-800">
+                          <Calendar size={10} />
+                          {format(new Date(note.dueDate), "MMM d, HH:mm")}
+                        </span>
+                      )}
+                      {note.reminderAt && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/40 px-2 py-0.5 text-[10px] font-bold text-amber-900">
+                          <Bell size={10} />
+                          {format(new Date(note.reminderAt), "MMM d, HH:mm")}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </main>
@@ -218,7 +256,7 @@ export default function DemoNotesPage() {
           demo
           note={modal.mode === "edit" ? toDraft(modal.note) : null}
           onSave={handleSave}
-          onClose={() => setModal(null)}
+          onClose={closeModal}
         />
       )}
     </div>
