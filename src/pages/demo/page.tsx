@@ -4,87 +4,91 @@ import { toast } from "sonner";
 import { ArrowLeft, Pin, PinOff, Plus, StickyNote, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
+import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { NOTE_COLORS } from "@/lib/note-colors.ts";
 import { cn } from "@/lib/utils.ts";
-
-const STORAGE_KEY = "cx-notes-demo";
-
-type DemoNote = {
-  id: string;
-  title: string;
-  content: string;
-  colorIndex: number;
-  isPinned: boolean;
-  createdAt: string;
-};
-
-function loadNotes(): DemoNote[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((n): n is DemoNote => {
-      if (typeof n !== "object" || n === null) return false;
-      const c = n as Partial<DemoNote>;
-      return (
-        typeof c.id === "string" &&
-        typeof c.title === "string" &&
-        typeof c.content === "string" &&
-        typeof c.colorIndex === "number" &&
-        typeof c.isPinned === "boolean" &&
-        typeof c.createdAt === "string"
-      );
-    });
-  } catch {
-    return [];
-  }
-}
+import {
+  deleteDemoNote,
+  listDemoNotes,
+  migrateLegacyDemoNotes,
+  putDemoNote,
+  type DemoNote,
+} from "@/lib/demo-notes-db.ts";
 
 export default function DemoNotesPage() {
-  const [notes, setNotes] = useState<DemoNote[]>(() => loadNotes());
+  const [notes, setNotes] = useState<DemoNote[] | undefined>(undefined);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [colorIndex, setColorIndex] = useState(0);
 
-  // Persist to the browser only. Demo notes never reach the database.
+  // Load demo notes from IndexedDB (browser-only storage, never the database).
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
-  }, [notes]);
+    let cancelled = false;
+    const load = async () => {
+      try {
+        await migrateLegacyDemoNotes();
+        const rows = await listDemoNotes();
+        if (!cancelled) setNotes(rows);
+      } catch {
+        if (!cancelled) {
+          setNotes([]);
+          toast.error("Cannot open local storage in this browser");
+        }
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const addNote = useCallback(() => {
+  const addNote = useCallback(async () => {
     if (!title.trim() && !content.trim()) {
       toast.error("Add a title or some text first");
       return;
     }
-    setNotes((prev) => [
-      {
-        id: crypto.randomUUID(),
-        title: title.trim(),
-        content: content.trim(),
-        colorIndex,
-        isPinned: false,
-        createdAt: new Date().toISOString(),
-      },
-      ...prev,
-    ]);
-    setTitle("");
-    setContent("");
-    toast.success("Demo note saved in this browser");
+    const note: DemoNote = {
+      id: crypto.randomUUID(),
+      title: title.trim(),
+      content: content.trim(),
+      colorIndex,
+      isPinned: false,
+      createdAt: new Date().toISOString(),
+    };
+    try {
+      await putDemoNote(note);
+      setNotes((prev) => [note, ...(prev ?? [])]);
+      setTitle("");
+      setContent("");
+      toast.success("Demo note saved in this browser");
+    } catch {
+      toast.error("Could not save the note");
+    }
   }, [title, content, colorIndex]);
 
-  const removeNote = (id: string) => {
-    setNotes((prev) => prev.filter((n) => n.id !== id));
-    toast.success("Demo note deleted");
+  const removeNote = async (id: string) => {
+    try {
+      await deleteDemoNote(id);
+      setNotes((prev) => (prev ?? []).filter((n) => n.id !== id));
+      toast.success("Demo note deleted");
+    } catch {
+      toast.error("Could not delete the note");
+    }
   };
 
-  const togglePin = (id: string) => {
-    setNotes((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isPinned: !n.isPinned } : n)),
-    );
+  const togglePin = async (note: DemoNote) => {
+    const updated: DemoNote = { ...note, isPinned: !note.isPinned };
+    try {
+      await putDemoNote(updated);
+      setNotes((prev) => (prev ?? []).map((n) => (n.id === note.id ? updated : n)));
+    } catch {
+      toast.error("Could not update the note");
+    }
   };
 
-  const sorted = [...notes].sort((a, b) => Number(b.isPinned) - Number(a.isPinned));
+  const sorted = [...(notes ?? [])].sort(
+    (a, b) => Number(b.isPinned) - Number(a.isPinned),
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -130,13 +134,23 @@ export default function DemoNotesPage() {
                 style={{ background: color.bg }}
               />
             ))}
-            <Button onClick={addNote} className="ml-auto rounded-xl">
+            <Button onClick={() => void addNote()} className="ml-auto rounded-xl">
               <Plus size={16} className="mr-1" /> Add note
             </Button>
           </div>
         </div>
 
-        {sorted.length === 0 ? (
+        {notes === undefined ? (
+          <div className="columns-1 gap-4 space-y-4 sm:columns-2 lg:columns-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton
+                key={i}
+                className="break-inside-avoid rounded-2xl"
+                style={{ height: 120 + (i % 3) * 40 }}
+              />
+            ))}
+          </div>
+        ) : sorted.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
               <StickyNote size={28} className="text-muted-foreground" />
@@ -159,14 +173,14 @@ export default function DemoNotesPage() {
                     {note.title || "Untitled"}
                   </h3>
                   <button
-                    onClick={() => togglePin(note.id)}
+                    onClick={() => void togglePin(note)}
                     className="cursor-pointer text-neutral-700 hover:text-neutral-900"
                     aria-label={note.isPinned ? "Unpin note" : "Pin note"}
                   >
                     {note.isPinned ? <PinOff size={14} /> : <Pin size={14} />}
                   </button>
                   <button
-                    onClick={() => removeNote(note.id)}
+                    onClick={() => void removeNote(note.id)}
                     className="cursor-pointer text-neutral-700 hover:text-red-600"
                     aria-label="Delete note"
                   >
