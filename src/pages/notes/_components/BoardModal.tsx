@@ -4,10 +4,15 @@ import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { cn } from "@/lib/utils.ts";
 import { BOARD_COLORS } from "@/lib/note-colors.ts";
-import type { Doc } from "@/convex/_generated/dataModel.d.ts";
+
+// Editable shape shared by database boards and local demo boards
+export type BoardDraft = {
+  name: string;
+  colorIndex: number;
+};
 
 type Props = {
-  board?: Doc<"boards"> | null;
+  board?: BoardDraft | null;
   onSave: (data: { name: string; colorIndex: number }) => void;
   onClose: () => void;
 };
