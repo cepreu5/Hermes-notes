@@ -22,6 +22,15 @@ import type { Doc, Id } from "@/convex/_generated/dataModel.d.ts";
 type NoteModalState = { mode: "create"; boardId?: Id<"boards"> } | { mode: "edit"; note: Doc<"notes"> } | null;
 type BoardModalState = { mode: "create" } | { mode: "edit"; board: Doc<"boards"> } | null;
 
+type SaveNoteData = {
+  title: string;
+  content: string;
+  colorIndex: number;
+  labelIds: Id<"labels">[];
+  dueDate?: string;
+  reminderAt?: string;
+};
+
 function LandingPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background p-8 text-center">
@@ -99,13 +108,29 @@ function NotesAppInner() {
   const activeLabel = labels.find((l) => l._id === activeLabelId);
 
   const handleSaveNote = useCallback(
-    async (data: { title: string; content: string; colorIndex: number; labelIds: Id<"labels">[] }) => {
+    async (data: SaveNoteData) => {
       try {
         if (noteModal?.mode === "edit") {
-          await updateNote({ noteId: noteModal.note._id, ...data });
+          await updateNote({
+            noteId: noteModal.note._id,
+            title: data.title,
+            content: data.content,
+            colorIndex: data.colorIndex,
+            labelIds: data.labelIds,
+            dueDate: data.dueDate,
+            reminderAt: data.reminderAt,
+          });
           toast.success("Note saved");
         } else {
-          const id = await createNote({ boardId: noteModal?.mode === "create" ? noteModal.boardId : activeBoardId, ...data });
+          const id = await createNote({
+            boardId: noteModal?.mode === "create" ? noteModal.boardId : activeBoardId,
+            title: data.title,
+            content: data.content,
+            colorIndex: data.colorIndex,
+            labelIds: data.labelIds,
+            dueDate: data.dueDate,
+            reminderAt: data.reminderAt,
+          });
           setNewNoteIds((prev) => new Set(prev).add(id));
           setTimeout(() => setNewNoteIds((prev) => { const s = new Set(prev); s.delete(id); return s; }), 1000);
           toast.success("Note created");
