@@ -9,10 +9,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       authority={authority}
       client_id={clientId}
       redirect_uri={`${window.location.origin}/auth/callback`}
-      onSigninCallback={() => {
-        // Remove OIDC params from URL after successful signin
-        window.history.replaceState({}, document.title, "/auth/callback");
-      }}
     >
       {children}
     </OidcAuthProvider>

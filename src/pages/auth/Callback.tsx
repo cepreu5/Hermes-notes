@@ -6,14 +6,29 @@ import { api } from "@/convex/_generated/api.js";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { Button } from "@/components/ui/button.tsx";
 
+// Check if we arrived here from an OIDC redirect (has code + state params)
+function hasOidcParams() {
+  const params = new URLSearchParams(window.location.search);
+  return params.has("code") && params.has("state");
+}
+
 export default function AuthCallback() {
   const navigate = useNavigate();
   const auth = useAuth();
   const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
   const updateCurrentUser = useMutation(api.users.updateCurrentUser);
   const synced = useRef(false);
+  // Remember if we had OIDC params on mount — if not, redirect immediately
+  const hadOidcParams = useRef(hasOidcParams());
 
-  // Sync user to DB once Convex confirms authentication, then go home
+  // No OIDC params means direct visit — go home
+  useEffect(() => {
+    if (!hadOidcParams.current) {
+      navigate("/", { replace: true });
+    }
+  }, [navigate]);
+
+  // Once Convex confirms auth, sync user to DB and redirect home
   useEffect(() => {
     if (isConvexAuthenticated && !synced.current) {
       synced.current = true;
@@ -21,13 +36,6 @@ export default function AuthCallback() {
         .finally(() => navigate("/", { replace: true }));
     }
   }, [isConvexAuthenticated, updateCurrentUser, navigate]);
-
-  // If done loading and not authenticated (no auth params), go home
-  useEffect(() => {
-    if (!auth.isLoading && !auth.isAuthenticated && !auth.activeNavigator && !auth.error) {
-      navigate("/", { replace: true });
-    }
-  }, [auth.isLoading, auth.isAuthenticated, auth.activeNavigator, auth.error, navigate]);
 
   if (auth.error) {
     return (
