@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Plus, X, Pencil, Check } from "lucide-react";
-import { Input } from "@/components/ui/input.tsx";
 import { cn } from "@/lib/utils.ts";
 import {
   deleteDemoLabel,
@@ -37,9 +36,7 @@ export default function DemoLabelPicker({ selectedIds, onChange }: Props) {
       if (!cancelled) setLabels(rows);
     };
     void load();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   const toggle = (id: string) => {
@@ -88,6 +85,9 @@ export default function DemoLabelPicker({ selectedIds, onChange }: Props) {
     setLabels((prev) => prev.filter((l) => l.id !== id));
   };
 
+  // Hardcoded dark color so text is always readable on light pastel note backgrounds
+  const inputStyle: React.CSSProperties = { color: "#111", caretColor: "#111" };
+
   return (
     <div className="space-y-2">
       <p className="mb-1 text-xs font-semibold tracking-wide text-gray-600 uppercase">Labels</p>
@@ -105,10 +105,14 @@ export default function DemoLabelPicker({ selectedIds, onChange }: Props) {
                       style={{ background: c }} />
                   ))}
                 </div>
-                <Input value={editName} onChange={(e) => setEditName(e.target.value)}
-                  className="h-6 w-20 rounded-lg border-0 bg-white/80 px-1.5 text-xs"
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="h-6 w-20 rounded-lg border-0 bg-white/80 px-1.5 text-xs outline-none focus:ring-2 focus:ring-gray-400 placeholder:text-gray-400"
+                  style={inputStyle}
                   onKeyDown={(e) => { if (e.key === "Enter") void handleUpdate(); if (e.key === "Escape") setEditingId(null); }}
-                  autoFocus />
+                  autoFocus
+                />
                 <button type="button" onClick={() => void handleUpdate()} className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-black/10"><Check size={11} /></button>
                 <button type="button" onClick={() => setEditingId(null)} className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-black/10"><X size={11} /></button>
               </div>
@@ -144,10 +148,15 @@ export default function DemoLabelPicker({ selectedIds, onChange }: Props) {
                   style={{ background: c }} />
               ))}
             </div>
-            <Input value={newName} onChange={(e) => setNewName(e.target.value)}
-              placeholder="Label name..." className="h-6 w-24 rounded-lg border-0 bg-white/80 px-1.5 text-xs"
+            <input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Label name..."
+              className="h-6 w-24 rounded-lg border-0 bg-white/80 px-1.5 text-xs outline-none focus:ring-2 focus:ring-gray-400 placeholder:text-gray-400"
+              style={inputStyle}
               onKeyDown={(e) => { if (e.key === "Enter") void handleCreate(); if (e.key === "Escape") setAdding(false); }}
-              autoFocus />
+              autoFocus
+            />
             <button type="button" onClick={() => void handleCreate()} className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-black/10"><Check size={11} /></button>
             <button type="button" onClick={() => setAdding(false)} className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-black/10"><X size={11} /></button>
           </div>
