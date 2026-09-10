@@ -6,29 +6,27 @@ import { api } from "@/convex/_generated/api.js";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { Button } from "@/components/ui/button.tsx";
 
-// Check if we arrived here from an OIDC redirect (has code + state params)
-function hasOidcParams() {
-  const params = new URLSearchParams(window.location.search);
-  return params.has("code") && params.has("state");
-}
-
 export default function AuthCallback() {
   const navigate = useNavigate();
   const auth = useAuth();
   const { isAuthenticated: isConvexAuthenticated } = useConvexAuth();
   const updateCurrentUser = useMutation(api.users.updateCurrentUser);
   const synced = useRef(false);
-  // Remember if we had OIDC params on mount — if not, redirect immediately
-  const hadOidcParams = useRef(hasOidcParams());
 
-  // No OIDC params means direct visit — go home
   useEffect(() => {
-    if (!hadOidcParams.current) {
-      navigate("/", { replace: true });
-    }
-  }, [navigate]);
+    // Wait for react-oidc-context to finish processing the callback
+    if (auth.isLoading) return;
 
-  // Once Convex confirms auth, sync user to DB and redirect home
+    // If auth failed with no error and not authenticated, go home
+    if (!auth.isAuthenticated && !auth.error) {
+      navigate("/", { replace: true });
+      return;
+    }
+
+    // Authenticated in OIDC — now wait for Convex (handled below)
+  }, [auth.isLoading, auth.isAuthenticated, auth.error, navigate]);
+
+  // Once Convex confirms auth, sync user to DB and go home
   useEffect(() => {
     if (isConvexAuthenticated && !synced.current) {
       synced.current = true;
