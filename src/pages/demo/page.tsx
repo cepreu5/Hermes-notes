@@ -318,12 +318,14 @@ export default function DemoNotesPage() {
             )}
           </div>
         )}
-        {/* Board badge — same as in the normal app */}
+        {/* Board badge — click selects this board */}
         {board && boardColor && (
           <div className="mt-2">
             <span
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold text-white"
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold text-white cursor-pointer hover:brightness-110 active:scale-95 transition-all"
               style={{ background: boardColor.bg }}
+              onClick={(e) => { e.stopPropagation(); setActiveBoardId(board.id); }}
+              title={`Filter by board: ${board.name}`}
             >
               <LayoutGrid size={8} />
               {board.name}
